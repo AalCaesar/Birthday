@@ -1,12 +1,13 @@
 // =========================================================
-// GALAXY LOVE — Three.js Interactive Scene
+// GALAXY LOVE — Three.js Interactive Scene (Enhanced Visual)
 // Struktur utama:
 // 1. UI overlay + modal
 // 2. Setup scene Three.js
-// 3. Galaxy particles + black hole + light pillar
-// 4. 3D heart particles
-// 5. Orbiting text + floating heart sprites + orbiting image sprites
-// 6. Raycaster, parallax mouse, animation loop
+// 3. Galaxy particles (30k) + Black Hole (Sphere + Accretion Disk Rings)
+// 4. Connection Stream (energy pillar)
+// 5. 3D Heart particles (fluffy) + heart outline
+// 6. Orbiting text + floating heart sprites + orbiting image sprites
+// 7. Raycaster, parallax mouse, animation loop
 // =========================================================
 
 // ---------- UI Interactions: Intro START dan Modal ----------
@@ -22,8 +23,6 @@ let animationStarted = false;
 
 startBtn.addEventListener("click", () => {
     uiOverlay.classList.add("hidden");
-
-    // Animasi Three.js baru mulai setelah intro menghilang.
     setTimeout(() => {
         animationStarted = true;
         releaseIntroBurst();
@@ -46,7 +45,7 @@ modalOverlay.addEventListener("click", (event) => {
 // ---------- Setup Three.js ----------
 const container = document.getElementById("canvas-container");
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x050006, 0.018);
+scene.fog = new THREE.FogExp2(0x050006, 0.016);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
 const baseCameraY = 14;
@@ -59,9 +58,9 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x020006, 1);
 container.appendChild(renderer.domElement);
 
-// Cahaya lembut untuk membuat sprite dan torus lebih hidup.
-scene.add(new THREE.AmbientLight(0xffb6cc, 0.45));
-const centerLight = new THREE.PointLight(0xff0033, 10, 120);
+// Cahaya ambient dan point light
+scene.add(new THREE.AmbientLight(0xffb6cc, 0.4));
+const centerLight = new THREE.PointLight(0xff0033, 12, 130);
 centerLight.position.set(0, 10, 12);
 scene.add(centerLight);
 
@@ -73,50 +72,146 @@ function createGlowTexture() {
     const ctx = canvas.getContext("2d");
     const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
     gradient.addColorStop(0, "rgba(255,255,255,1)");
-    gradient.addColorStop(0.16, "rgba(255,51,102,0.98)");
-    gradient.addColorStop(0.44, "rgba(255,0,0,0.42)");
+    gradient.addColorStop(0.15, "rgba(255,100,180,0.95)");
+    gradient.addColorStop(0.4, "rgba(255,0,60,0.5)");
     gradient.addColorStop(1, "rgba(139,0,0,0)");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     return new THREE.CanvasTexture(canvas);
 }
 
+// Tekstur khusus untuk pusat cincin yang sangat terang (putih/pink)
+function createBrightRingTexture() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext("2d");
+    const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gradient.addColorStop(0, "rgba(255,255,255,1)");
+    gradient.addColorStop(0.25, "rgba(255,220,240,0.9)");
+    gradient.addColorStop(0.55, "rgba(255,80,150,0.5)");
+    gradient.addColorStop(1, "rgba(200,0,50,0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return new THREE.CanvasTexture(canvas);
+}
+
 const glowTexture = createGlowTexture();
+const brightRingTexture = createBrightRingTexture();
 
 // =========================================================
-// 1. Galaxy Particles — 20.000 partikel ruby/crimson spiral padat
+// 1. BLACK HOLE — Bola hitam + Cincin Akresi Bercahaya
+// =========================================================
+const blackHoleGroup = new THREE.Group();
+// Posisi black hole di tengah galaksi (akan ditambah ke galaxyGroup)
+
+// Inti bola hitam
+const blackHoleCore = new THREE.Mesh(
+    new THREE.SphereGeometry(1.5, 64, 64),
+    new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        transparent: false
+    })
+);
+blackHoleGroup.add(blackHoleCore);
+
+// Glow tipis di sekeliling inti bola (halo merah samar)
+const coreHaloMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(1.75, 48, 48),
+    new THREE.MeshBasicMaterial({
+        color: 0xff0033,
+        transparent: true,
+        opacity: 0.18,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    })
+);
+blackHoleGroup.add(coreHaloMesh);
+
+// Cincin akresi: beberapa layer RingGeometry pipih, sangat terang di dalam
+// Cincin dimiringkan agar terlihat miring seperti Saturnus
+blackHoleGroup.rotation.x = Math.PI / 2; // Putar grup agar cincin horizontal (datar)
+blackHoleGroup.userData.rings = [];
+
+const accretionRingDefs = [
+    // { inner, outer, colorHex, opacity, tiltY }
+    { inner: 1.9,  outer: 2.6,  color: 0xfffafa, opacity: 0.95, tiltY: 0 },       // Paling dalam — putih menyilaukan
+    { inner: 2.65, outer: 3.2,  color: 0xffccee, opacity: 0.78, tiltY: 0.03 },    // Pink terang
+    { inner: 3.28, outer: 3.85, color: 0xff80b0, opacity: 0.55, tiltY: -0.04 },   // Pink sedang
+    { inner: 3.92, outer: 4.45, color: 0xff2255, opacity: 0.38, tiltY: 0.06 },    // Merah
+    { inner: 4.55, outer: 4.95, color: 0xcc0033, opacity: 0.22, tiltY: -0.05 },   // Merah gelap
+    { inner: 5.08, outer: 5.35, color: 0x880022, opacity: 0.12, tiltY: 0.04 }     // Paling luar — redup
+];
+
+accretionRingDefs.forEach((def) => {
+    const ring = new THREE.Mesh(
+        new THREE.RingGeometry(def.inner, def.outer, 256),
+        new THREE.MeshBasicMaterial({
+            color: def.color,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: def.opacity,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        })
+    );
+    ring.rotation.y = def.tiltY;
+    ring.userData.baseOpacity = def.opacity;
+    blackHoleGroup.userData.rings.push(ring);
+    blackHoleGroup.add(ring);
+});
+
+// =========================================================
+// 2. Galaxy Particles — 30.000 partikel spiral crimson/ruby
 // =========================================================
 const galaxyGroup = new THREE.Group();
 const galaxyGeometry = new THREE.BufferGeometry();
-const particleCount = 20000;
+const particleCount = 30000;
 const galaxyPositions = new Float32Array(particleCount * 3);
 const galaxyColors = new Float32Array(particleCount * 3);
 const galaxyVelocities = new Float32Array(particleCount * 3);
 
-// Palet spesifik: merah pekat/ruby/crimson tanpa orange/gold.
-const galaxyPalette = [
-    new THREE.Color("#ff0000"),
-    new THREE.Color("#8b0000"),
-    new THREE.Color("#ff3366"),
-    new THREE.Color("#ff0033")
-];
+// Palet: merah/crimson/ruby, lebih terang di tengah
+const colorDark = new THREE.Color("#8b0000");
+const colorMid  = new THREE.Color("#cc0022");
+const colorBright = new THREE.Color("#ff3366");
+const colorWhite = new THREE.Color("#ffddee");
 
 for (let i = 0; i < particleCount; i++) {
     const base = i * 3;
-    const branchCount = 6;
-    const radius = Math.pow(Math.random(), 0.72) * 27.5; // radius lebih rapat dari versi sebelumnya
+    const branchCount = 5;
+    // Distribusi radius: lebih rapat di dekat pusat
+    const radius = Math.pow(Math.random(), 0.6) * 28.0;
     const branchAngle = (i % branchCount) / branchCount * Math.PI * 2;
-    const spinAngle = radius * 0.62;
-    const compactNoise = Math.pow(Math.random(), 2.8) * 1.75;
-    const angle = branchAngle + spinAngle + (Math.random() - 0.5) * 0.2;
+    const spinAngle = radius * 0.58;
+    const compactNoise = Math.pow(Math.random(), 3.0) * 2.2 * (radius / 28.0);
+    const angle = branchAngle + spinAngle + (Math.random() - 0.5) * 0.18;
 
-    galaxyPositions[base] = Math.cos(angle) * radius + (Math.random() - 0.5) * compactNoise;
-    galaxyPositions[base + 1] = (Math.random() - 0.5) * 0.9 + Math.sin(radius * 0.7) * 0.12;
-    galaxyPositions[base + 2] = Math.sin(angle) * radius + (Math.random() - 0.5) * compactNoise;
+    const x = Math.cos(angle) * radius + (Math.random() - 0.5) * compactNoise;
+    const z = Math.sin(angle) * radius + (Math.random() - 0.5) * compactNoise;
+    const y = (Math.random() - 0.5) * 0.85 + Math.sin(radius * 0.65) * 0.1;
 
-    const color = galaxyPalette[Math.floor(Math.random() * galaxyPalette.length)].clone();
-    color.lerp(new THREE.Color("#ff3366"), Math.random() * 0.28);
-    galaxyColors[base] = color.r;
+    galaxyPositions[base]     = x;
+    galaxyPositions[base + 1] = y;
+    galaxyPositions[base + 2] = z;
+
+    // Warna: sangat terang (hampir putih) di dekat pusat, meredup ke luar
+    const distFactor = radius / 28.0; // 0 = pusat, 1 = luar
+    const color = new THREE.Color();
+    if (distFactor < 0.12) {
+        // Pusat: hampir putih/pink terang
+        color.copy(colorWhite).lerp(colorBright, distFactor / 0.12);
+    } else if (distFactor < 0.45) {
+        color.copy(colorBright).lerp(colorMid, (distFactor - 0.12) / 0.33);
+    } else {
+        color.copy(colorMid).lerp(colorDark, (distFactor - 0.45) / 0.55);
+    }
+    // Sedikit variasi acak
+    color.r = Math.min(1, color.r + (Math.random() - 0.5) * 0.08);
+    color.g = Math.max(0, color.g + (Math.random() - 0.5) * 0.04);
+    color.b = Math.max(0, color.b + (Math.random() - 0.5) * 0.04);
+
+    galaxyColors[base]     = color.r;
     galaxyColors[base + 1] = color.g;
     galaxyColors[base + 2] = color.b;
 }
@@ -125,66 +220,89 @@ galaxyGeometry.setAttribute("position", new THREE.BufferAttribute(galaxyPosition
 galaxyGeometry.setAttribute("color", new THREE.BufferAttribute(galaxyColors, 3));
 
 const galaxyMaterial = new THREE.PointsMaterial({
-    size: 0.125,
+    size: 0.13,
     map: glowTexture,
     vertexColors: true,
     transparent: true,
-    opacity: 0.94,
+    opacity: 0.92,
     depthWrite: false,
+    sizeAttenuation: true,
     blending: THREE.AdditiveBlending
 });
 
 const galaxyMesh = new THREE.Points(galaxyGeometry, galaxyMaterial);
 galaxyGroup.add(galaxyMesh);
+// Tambahkan black hole ke dalam galaxyGroup agar ikut berotasi
+galaxyGroup.add(blackHoleGroup);
 scene.add(galaxyGroup);
 
 // =========================================================
-// 2. Glowing Saturn Rings + Pilar Cahaya menuju Heart
+// 3. Orbiting Dots — Titik-titik yang mengikuti lengan spiral
 // =========================================================
-const blackHole = new THREE.Group();
-blackHole.rotation.x = Math.PI / 2;
-blackHole.userData.rings = [];
+const orbitingDotsGroup = new THREE.Group();
+const orbitDotCount = 1200;
+const orbitDotGeometry = new THREE.BufferGeometry();
+const orbitDotPositions = new Float32Array(orbitDotCount * 3);
+const orbitDotColors = new Float32Array(orbitDotCount * 3);
+const orbitDotMeta = [];
 
-const ringLayers = [
-    { inner: 1.65, outer: 2.15, color: 0xff0033, opacity: 0.55, tilt: 0 },
-    { inner: 2.28, outer: 2.78, color: 0xff1a1a, opacity: 0.42, tilt: 0.04 },
-    { inner: 2.94, outer: 3.34, color: 0xff3366, opacity: 0.3, tilt: -0.035 },
-    { inner: 3.52, outer: 3.72, color: 0xff0033, opacity: 0.22, tilt: 0.065 }
-];
+for (let i = 0; i < orbitDotCount; i++) {
+    const base = i * 3;
+    const branchCount = 5;
+    const radius = 2.0 + Math.random() * 25.0;
+    const branchIndex = i % branchCount;
+    const branchAngle = branchIndex / branchCount * Math.PI * 2;
+    const spinAngle = radius * 0.58;
+    const angle = branchAngle + spinAngle + (Math.random() - 0.5) * 0.22;
 
-ringLayers.forEach((layer) => {
-    const ring = new THREE.Mesh(
-        new THREE.RingGeometry(layer.inner, layer.outer, 192),
-        new THREE.MeshBasicMaterial({
-            color: layer.color,
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: layer.opacity,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        })
+    orbitDotPositions[base]     = Math.cos(angle) * radius;
+    orbitDotPositions[base + 1] = (Math.random() - 0.5) * 0.6;
+    orbitDotPositions[base + 2] = Math.sin(angle) * radius;
+
+    // Kecepatan berbeda berdasarkan radius (lebih dekat = lebih cepat)
+    const speed = (0.04 + Math.random() * 0.08) / (radius * 0.12 + 0.5);
+    orbitDotMeta.push({
+        radius,
+        branchAngle,
+        spinOffset: spinAngle,
+        speed: speed * (Math.random() > 0.5 ? 1 : -0.6), // Arah berbeda
+        noiseOffset: Math.random() * Math.PI * 2
+    });
+
+    const brightness = 1 - radius / 27.0;
+    const color = new THREE.Color().setRGB(
+        0.8 + brightness * 0.2,
+        brightness * 0.35,
+        brightness * 0.18
     );
-    ring.rotation.y = layer.tilt;
-    ring.userData.baseOpacity = layer.opacity;
-    blackHole.userData.rings.push(ring);
-    blackHole.add(ring);
+    orbitDotColors[base]     = color.r;
+    orbitDotColors[base + 1] = color.g;
+    orbitDotColors[base + 2] = color.b;
+}
+
+orbitDotGeometry.setAttribute("position", new THREE.BufferAttribute(orbitDotPositions, 3));
+orbitDotGeometry.setAttribute("color", new THREE.BufferAttribute(orbitDotColors, 3));
+
+const orbitDotMaterial = new THREE.PointsMaterial({
+    size: 0.19,
+    map: glowTexture,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.88,
+    depthWrite: false,
+    sizeAttenuation: true,
+    blending: THREE.AdditiveBlending
 });
 
-const blackHoleCore = new THREE.Mesh(
-    new THREE.SphereGeometry(1.05, 48, 48),
-    new THREE.MeshBasicMaterial({
-        color: 0x080002,
-        transparent: true,
-        opacity: 0.92,
-        blending: THREE.AdditiveBlending
-    })
-);
-blackHole.add(blackHoleCore);
-galaxyGroup.add(blackHole);
+const orbitDotMesh = new THREE.Points(orbitDotGeometry, orbitDotMaterial);
+orbitingDotsGroup.add(orbitDotMesh);
+galaxyGroup.add(orbitingDotsGroup);
 
-// Pilar partikel merah yang menyembur dari pusat cincin galaksi ke heart.
-const heartCenterY = 15.2;
-const pillarParticleCount = 3600;
+// =========================================================
+// 4. Connection Stream — Aliran energi dari black hole ke heart
+// =========================================================
+const heartCenterY = 15.5;
+const pillarParticleCount = 4200;
 const pillarGeometry = new THREE.BufferGeometry();
 const pillarPositions = new Float32Array(pillarParticleCount * 3);
 const pillarColors = new Float32Array(pillarParticleCount * 3);
@@ -194,29 +312,38 @@ for (let i = 0; i < pillarParticleCount; i++) {
     const base = i * 3;
     const progress = Math.random();
     const angle = Math.random() * Math.PI * 2;
-    const radius = (1 - progress) * (0.95 + Math.random() * 0.7) + 0.12;
+    const spreadRadius = (1 - progress) * (0.9 + Math.random() * 0.6) + 0.08;
 
-    pillarPositions[base] = Math.cos(angle) * radius;
+    pillarPositions[base]     = Math.cos(angle) * spreadRadius;
     pillarPositions[base + 1] = progress * heartCenterY;
-    pillarPositions[base + 2] = Math.sin(angle) * radius;
+    pillarPositions[base + 2] = Math.sin(angle) * spreadRadius;
 
-    const color = new THREE.Color("#ff0033").lerp(new THREE.Color("#ffeeee"), progress * 0.28);
-    pillarColors[base] = color.r;
+    // Warna: merah menyala di bawah, menuju putih-pink di atas
+    const t = progress;
+    const color = new THREE.Color("#ff0033").lerp(new THREE.Color("#ffaacc"), t * 0.45);
+    pillarColors[base]     = color.r;
     pillarColors[base + 1] = color.g;
     pillarColors[base + 2] = color.b;
-    pillarMeta.push({ progress, angle, radius, speed: 0.16 + Math.random() * 0.28 });
+
+    pillarMeta.push({
+        progress,
+        angle,
+        radius: spreadRadius,
+        speed: 0.18 + Math.random() * 0.26
+    });
 }
 
 pillarGeometry.setAttribute("position", new THREE.BufferAttribute(pillarPositions, 3));
 pillarGeometry.setAttribute("color", new THREE.BufferAttribute(pillarColors, 3));
 
 const pillarMaterial = new THREE.PointsMaterial({
-    size: 0.18,
+    size: 0.16,
     map: glowTexture,
     vertexColors: true,
     transparent: true,
-    opacity: 0.82,
+    opacity: 0.85,
     depthWrite: false,
+    sizeAttenuation: true,
     blending: THREE.AdditiveBlending
 });
 
@@ -224,10 +351,10 @@ const pillarMesh = new THREE.Points(pillarGeometry, pillarMaterial);
 scene.add(pillarMesh);
 
 // =========================================================
-// 3. Heart Particles — heart tebal/volume merah menyala #ff0033
+// 5. Heart Particles — Fluffy 3D Heart merah menyala
 // =========================================================
 const heartGeometry = new THREE.BufferGeometry();
-const heartParticles = 18000;
+const heartParticles = 22000;
 const heartPositions = new Float32Array(heartParticles * 3);
 const heartColors = new Float32Array(heartParticles * 3);
 
@@ -235,21 +362,40 @@ for (let i = 0; i < heartParticles; i++) {
     const base = i * 3;
     const t = Math.PI * 2 * Math.random();
 
-    // Mayoritas partikel dibuat dekat outline agar siluet hati sangat jelas dan padat.
-    const shell = Math.random() > 0.34 ? 0.82 + Math.random() * 0.22 : Math.pow(Math.random(), 0.34) * 0.86;
-    const thickness = (Math.random() - 0.5) * 2.6 * (0.45 + shell * 0.75);
-    const jitter = (Math.random() - 0.5) * 0.12;
+    // Rumus parametrik hati 3D
+    const hx = 16 * Math.pow(Math.sin(t), 3);
+    const hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
 
-    const x = 16 * Math.pow(Math.sin(t), 3);
-    const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+    const scale = 0.6;
 
-    const scale = 0.62;
-    heartPositions[base] = x * scale * shell + jitter;
-    heartPositions[base + 1] = y * scale * shell + heartCenterY;
-    heartPositions[base + 2] = thickness;
+    // Random offset lebih besar untuk efek "fluffy/cloud-like"
+    // Noise berbeda di setiap sumbu agar tampak 3D
+    const noiseScale = 1.4 + Math.random() * 1.2; // Lebih tebal dari versi lama
+    const nx = (Math.random() - 0.5) * noiseScale;
+    const ny = (Math.random() - 0.5) * noiseScale;
+    const nz = (Math.random() - 0.5) * (noiseScale * 1.8); // Lebih dalam di sumbu Z
 
-    const color = new THREE.Color("#ff0033").lerp(new THREE.Color("#ff3366"), Math.random() * 0.18);
-    heartColors[base] = color.r;
+    heartPositions[base]     = hx * scale + nx;
+    heartPositions[base + 1] = hy * scale + heartCenterY + ny;
+    heartPositions[base + 2] = nz;
+
+    // Warna: merah menyala utama, sedikit variasi pink/crimson
+    const colorVariant = Math.random();
+    let color;
+    if (colorVariant < 0.55) {
+        color = new THREE.Color("#ff0033");
+    } else if (colorVariant < 0.8) {
+        color = new THREE.Color("#ff3366");
+    } else if (colorVariant < 0.92) {
+        color = new THREE.Color("#cc0022");
+    } else {
+        color = new THREE.Color("#ff80a0"); // Highlight terang
+    }
+    // Variasi kecil
+    color.r = Math.min(1, color.r + (Math.random() - 0.5) * 0.06);
+    color.g = Math.max(0, color.g);
+
+    heartColors[base]     = color.r;
     heartColors[base + 1] = color.g;
     heartColors[base + 2] = color.b;
 }
@@ -258,49 +404,55 @@ heartGeometry.setAttribute("position", new THREE.BufferAttribute(heartPositions,
 heartGeometry.setAttribute("color", new THREE.BufferAttribute(heartColors, 3));
 
 const heartMaterial = new THREE.PointsMaterial({
-    size: 0.16,
+    size: 0.18,
     map: glowTexture,
     vertexColors: true,
     transparent: true,
-    opacity: 1,
+    opacity: 1.0,
     depthWrite: false,
+    sizeAttenuation: true,
     blending: THREE.AdditiveBlending
 });
 
 const heartMesh = new THREE.Points(heartGeometry, heartMaterial);
 scene.add(heartMesh);
 
-// Outline hati dibuat beberapa lapis agar terlihat tebal seperti neon sign.
+// Outline hati berlapis (neon sign effect)
 const heartLineGroup = new THREE.Group();
 const heartLinePoints = [];
-for (let i = 0; i <= 260; i++) {
-    const t = i / 260 * Math.PI * 2;
+for (let i = 0; i <= 300; i++) {
+    const t = i / 300 * Math.PI * 2;
     heartLinePoints.push(new THREE.Vector3(
-        16 * Math.pow(Math.sin(t), 3) * 0.62,
-        (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 0.62 + heartCenterY,
+        16 * Math.pow(Math.sin(t), 3) * 0.6,
+        (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 0.6 + heartCenterY,
         0
     ));
 }
 
-[0.98, 1.04, 1.11].forEach((scale, index) => {
+[
+    { scale: 0.98, color: 0xffeeee, opacity: 0.7 },
+    { scale: 1.035, color: 0xff3366, opacity: 0.45 },
+    { scale: 1.07,  color: 0xff0033, opacity: 0.28 },
+    { scale: 1.11,  color: 0x880022, opacity: 0.15 }
+].forEach((def) => {
     const heartLine = new THREE.LineLoop(
         new THREE.BufferGeometry().setFromPoints(heartLinePoints),
         new THREE.LineBasicMaterial({
-            color: index === 0 ? 0xffeeee : 0xff0033,
+            color: def.color,
             transparent: true,
-            opacity: index === 0 ? 0.72 : 0.42,
+            opacity: def.opacity,
             blending: THREE.AdditiveBlending
         })
     );
-    heartLine.scale.setScalar(scale);
-    heartLine.userData.baseScale = scale;
-    heartLine.userData.baseOpacity = heartLine.material.opacity;
+    heartLine.scale.setScalar(def.scale);
+    heartLine.userData.baseScale   = def.scale;
+    heartLine.userData.baseOpacity = def.opacity;
     heartLineGroup.add(heartLine);
 });
 scene.add(heartLineGroup);
 
 // =========================================================
-// 4. Orbiting Texts — Sprite Canvas API putih/pink pudar
+// 6. Orbiting Texts — Sprite Canvas API
 // =========================================================
 const textGroup = new THREE.Group();
 const orbitWords = ["AMOR ETERNO", "INFINITO ∞", "TE AMO", "MY LOVE", "AMOR DE MI VIDA"];
@@ -311,16 +463,13 @@ function createTextSprite(text) {
     canvas.height = 256;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     ctx.font = "800 56px Inter, Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.letterSpacing = "2px";
     ctx.shadowColor = "#ff0033";
     ctx.shadowBlur = 34;
     ctx.fillStyle = "#ffeeee";
     ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-
     const texture = new THREE.CanvasTexture(canvas);
     const material = new THREE.SpriteMaterial({
         map: texture,
@@ -335,11 +484,11 @@ function createTextSprite(text) {
 }
 
 const textOrbitSettings = [
-    { radius: 18.5, y: 3.4, speed: 0.16 },
-    { radius: 23.5, y: 5.4, speed: 0.13 },
-    { radius: 28, y: 7.1, speed: 0.105 },
-    { radius: 32.5, y: 4.5, speed: 0.09 },
-    { radius: 37, y: 6.6, speed: 0.075 }
+    { radius: 18.5, y: 3.4,  speed: 0.16 },
+    { radius: 23.5, y: 5.4,  speed: 0.13 },
+    { radius: 28,   y: 7.1,  speed: 0.105 },
+    { radius: 32.5, y: 4.5,  speed: 0.09 },
+    { radius: 37,   y: 6.6,  speed: 0.075 }
 ];
 
 orbitWords.forEach((word, index) => {
@@ -359,7 +508,7 @@ orbitWords.forEach((word, index) => {
 scene.add(textGroup);
 
 // =========================================================
-// 5. Floating Heart Emojis — Sprite kecil di luar orbit teks
+// 7. Floating Heart Emojis
 // =========================================================
 const floatingHeartGroup = new THREE.Group();
 
@@ -375,7 +524,6 @@ function createHeartEmojiSprite() {
     ctx.shadowColor = "#ff0033";
     ctx.shadowBlur = 28;
     ctx.fillText(Math.random() > 0.45 ? "💖" : "❤", 128, 132);
-
     const texture = new THREE.CanvasTexture(canvas);
     return new THREE.SpriteMaterial({
         map: texture,
@@ -405,7 +553,7 @@ for (let i = 0; i < 24; i++) {
 scene.add(floatingHeartGroup);
 
 // =========================================================
-// 6. Orbiting Images — Sprite interaktif dengan userData
+// 8. Orbiting Images — Sprite interaktif
 // =========================================================
 const interactiveGroup = new THREE.Group();
 const textureLoader = new THREE.TextureLoader();
@@ -516,7 +664,6 @@ memories.forEach((data, index) => {
     sprite.position.set(Math.cos(data.angle) * data.radius, 4.15 + index * 0.28, Math.sin(data.angle) * data.radius);
     sprite.userData = { ...data, baseY: 4.15 + index * 0.28, speed: 0.095 + index * 0.012, floatOffset: index * 2.1 };
 
-    // Ganti fallback dengan gambar asli jika berhasil diload.
     textureLoader.load(data.image, (texture) => {
         texture.minFilter = THREE.LinearFilter;
         material.map = texture;
@@ -528,7 +675,7 @@ memories.forEach((data, index) => {
 scene.add(interactiveGroup);
 
 // =========================================================
-// 7. Raycaster & Interactivity
+// 9. Raycaster & Interactivity
 // =========================================================
 const raycaster = new THREE.Raycaster();
 const mouseVector = new THREE.Vector2();
@@ -545,13 +692,10 @@ document.addEventListener("mousemove", updateMouseFromEvent, { passive: true });
 
 document.addEventListener("click", (event) => {
     if (event.target.closest("#modal-overlay")) return;
-
     updateMouseFromEvent(event);
     if (!animationStarted) return;
-
     raycaster.setFromCamera(mouseVector, camera);
     const intersects = raycaster.intersectObjects(interactiveGroup.children, false);
-
     if (intersects.length > 0) {
         const data = intersects[0].object.userData;
         modalImg.src = data.image;
@@ -562,18 +706,18 @@ document.addEventListener("click", (event) => {
     }
 });
 
-// Burst kecil ketika START ditekan agar galaksi terasa hidup.
+// Burst kecil ketika START ditekan
 function releaseIntroBurst() {
     for (let i = 0; i < particleCount; i += 4) {
         const base = i * 3;
-        galaxyVelocities[base] += (Math.random() - 0.5) * 2.2;
+        galaxyVelocities[base]     += (Math.random() - 0.5) * 2.2;
         galaxyVelocities[base + 1] += (Math.random() - 0.5) * 1.4;
         galaxyVelocities[base + 2] += (Math.random() - 0.5) * 2.2;
     }
 }
 
 // =========================================================
-// 8. Animation Loop — berjalan penuh setelah START
+// 10. Animation Loop
 // =========================================================
 const clock = new THREE.Clock();
 
@@ -582,61 +726,88 @@ function animate() {
     const elapsed = clock.getElapsedTime();
     const delta = Math.min(clock.getDelta(), 0.033);
 
-    // Mouse parallax tetap dihitung halus supaya kamera terasa responsive.
+    // Mouse parallax
     pointer.x += (pointer.targetX - pointer.x) * 0.055;
     pointer.y += (pointer.targetY - pointer.y) * 0.055;
 
     if (animationStarted) {
-        // Rotasi galaksi dan black hole.
-        galaxyGroup.rotation.y = elapsed * 0.055;
-        blackHole.rotation.z = elapsed * 0.9;
-        blackHoleCore.scale.setScalar(1 + Math.sin(elapsed * 2.2) * 0.08);
-        blackHole.userData.rings.forEach((ring, index) => {
-            ring.material.opacity = ring.userData.baseOpacity + Math.sin(elapsed * 1.8 + index) * 0.08;
-            ring.scale.setScalar(1 + Math.sin(elapsed * 1.2 + index) * 0.025);
+        // --- Galaksi berotasi perlahan ---
+        galaxyGroup.rotation.y = elapsed * 0.052;
+
+        // --- Black hole: bola berdenyut + cincin berputar ---
+        // Black hole group berputar (rotasi Z karena group sudah di-tilt X)
+        // Putar seluruh blackHoleGroup sedikit di Y untuk efek wobble
+        blackHoleGroup.rotation.z = elapsed * 0.85;
+        // Inti bola berdenyut
+        const corePulse = 1 + Math.sin(elapsed * 2.5) * 0.07;
+        blackHoleCore.scale.setScalar(corePulse);
+        coreHaloMesh.scale.setScalar(corePulse * (1 + Math.sin(elapsed * 1.4) * 0.05));
+        coreHaloMesh.material.opacity = 0.15 + Math.sin(elapsed * 1.8) * 0.06;
+
+        // Cincin akresi: setiap ring berkedip dan sedikit mengembang/mengecil
+        blackHoleGroup.userData.rings.forEach((ring, index) => {
+            const pulseFactor = Math.sin(elapsed * 1.6 + index * 0.7) * 0.06;
+            ring.material.opacity = Math.max(0.05, ring.userData.baseOpacity + pulseFactor);
+            ring.scale.setScalar(1 + Math.sin(elapsed * 1.0 + index * 0.5) * 0.02);
         });
 
-        // Update posisi partikel galaksi dengan sedikit velocity burst.
+        // --- Update posisi partikel galaksi (velocity burst decay) ---
         const positions = galaxyGeometry.attributes.position.array;
         for (let i = 0; i < particleCount; i++) {
             const base = i * 3;
-            positions[base] += galaxyVelocities[base] * delta;
+            positions[base]     += galaxyVelocities[base]     * delta;
             positions[base + 1] += galaxyVelocities[base + 1] * delta;
             positions[base + 2] += galaxyVelocities[base + 2] * delta;
-            galaxyVelocities[base] *= 0.94;
+            galaxyVelocities[base]     *= 0.94;
             galaxyVelocities[base + 1] *= 0.94;
             galaxyVelocities[base + 2] *= 0.94;
         }
         galaxyGeometry.attributes.position.needsUpdate = true;
 
-        // Pilar cahaya: partikel mengalir ke atas dari black hole menuju heart.
+        // --- Orbiting dots: bergerak mengikuti lengan spiral ---
+        const orbitPositions = orbitDotGeometry.attributes.position.array;
+        for (let i = 0; i < orbitDotCount; i++) {
+            const base = i * 3;
+            const meta = orbitDotMeta[i];
+            // Update sudut berdasarkan kecepatan masing-masing
+            const currentAngle = meta.branchAngle + meta.spinOffset + elapsed * meta.speed;
+            const wobbleR = meta.radius + Math.sin(elapsed * 1.2 + meta.noiseOffset) * 0.3;
+            orbitPositions[base]     = Math.cos(currentAngle) * wobbleR;
+            orbitPositions[base + 1] = Math.sin(elapsed * 0.8 + meta.noiseOffset) * 0.25;
+            orbitPositions[base + 2] = Math.sin(currentAngle) * wobbleR;
+        }
+        orbitDotGeometry.attributes.position.needsUpdate = true;
+
+        // --- Connection Stream: partikel mengalir dari black hole ke heart ---
         const pillarArray = pillarGeometry.attributes.position.array;
         for (let i = 0; i < pillarParticleCount; i++) {
             const base = i * 3;
             const meta = pillarMeta[i];
-            const progress = (meta.progress + elapsed * meta.speed * 0.16) % 1;
-            const radius = (1 - progress) * meta.radius + 0.06 + Math.sin(elapsed * 2.3 + i) * 0.025;
-            const angle = meta.angle + elapsed * 0.36 + progress * 2.1;
-            pillarArray[base] = Math.cos(angle) * radius;
+            // Progress mengalir dari 0 → 1 secara kontinu
+            const progress = (meta.progress + elapsed * meta.speed * 0.14) % 1.0;
+            const spreadRadius = (1 - progress) * meta.radius + 0.05 + Math.sin(elapsed * 2.1 + i * 0.7) * 0.02;
+            const angle = meta.angle + elapsed * 0.38 + progress * 2.3;
+            pillarArray[base]     = Math.cos(angle) * spreadRadius;
             pillarArray[base + 1] = progress * heartCenterY;
-            pillarArray[base + 2] = Math.sin(angle) * radius;
+            pillarArray[base + 2] = Math.sin(angle) * spreadRadius;
         }
         pillarGeometry.attributes.position.needsUpdate = true;
-        pillarMaterial.opacity = 0.66 + Math.sin(elapsed * 2.4) * 0.12;
+        pillarMaterial.opacity = 0.68 + Math.sin(elapsed * 2.6) * 0.14;
 
-        // Hati besar melayang dan berdenyut.
-        const heartPulse = 1 + Math.sin(elapsed * 3.1) * 0.035 + Math.pow(Math.max(0, Math.sin(elapsed * 3.1)), 8) * 0.12;
+        // --- Heart berdenyut dan mengapung ---
+        const heartBeat = Math.pow(Math.max(0, Math.sin(elapsed * 3.0)), 6) * 0.14;
+        const heartPulse = 1 + Math.sin(elapsed * 3.0) * 0.032 + heartBeat;
         heartMesh.scale.setScalar(heartPulse);
-        heartMesh.rotation.y = elapsed * -0.12;
-        heartMaterial.size = 0.16 + Math.pow(Math.max(0, Math.sin(elapsed * 3.1)), 8) * 0.03;
+        heartMesh.rotation.y = elapsed * -0.11;
+        heartMaterial.size = 0.18 + heartBeat * 0.04;
 
         heartLineGroup.children.forEach((line, index) => {
             line.scale.setScalar(line.userData.baseScale * heartPulse);
-            line.rotation.y = elapsed * -0.12;
-            line.material.opacity = line.userData.baseOpacity + Math.sin(elapsed * 3.1 + index) * 0.12;
+            line.rotation.y = elapsed * -0.11;
+            line.material.opacity = Math.max(0.05, line.userData.baseOpacity + Math.sin(elapsed * 3.0 + index) * 0.1);
         });
 
-        // Orbiting text pada radius berbeda agar tidak bertabrakan.
+        // --- Orbiting text ---
         textGroup.children.forEach((sprite) => {
             const angle = sprite.userData.angle + elapsed * sprite.userData.speed;
             sprite.position.x = Math.cos(angle) * sprite.userData.radius;
@@ -645,7 +816,7 @@ function animate() {
             sprite.material.opacity = 0.72 + Math.sin(elapsed * 1.4 + sprite.userData.floatOffset) * 0.12;
         });
 
-        // Floating heart emojis di luar orbit teks.
+        // --- Floating heart emojis ---
         floatingHeartGroup.children.forEach((sprite) => {
             const angle = sprite.userData.angle + elapsed * sprite.userData.speed;
             sprite.position.x = Math.cos(angle) * sprite.userData.radius;
@@ -654,7 +825,7 @@ function animate() {
             sprite.scale.setScalar(sprite.userData.baseScale + Math.sin(elapsed * 1.1 + sprite.userData.floatOffset) * 0.18);
         });
 
-        // Orbiting images interaktif.
+        // --- Orbiting image sprites ---
         interactiveGroup.children.forEach((sprite) => {
             const angle = sprite.userData.angle + elapsed * sprite.userData.speed;
             sprite.position.x = Math.cos(angle) * sprite.userData.radius;
@@ -663,7 +834,7 @@ function animate() {
             sprite.scale.setScalar(4.6 + Math.sin(elapsed * 1.2 + sprite.userData.floatOffset) * 0.28);
         });
 
-        // Kamera parallax mengikuti cursor dengan smooth.
+        // --- Kamera parallax ---
         const targetCameraX = pointer.x * 5.5;
         const targetCameraY = baseCameraY + pointer.y * 3.2;
         camera.position.x += (targetCameraX - camera.position.x) * 0.045;
