@@ -1,54 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#050008" />
-    <title>Neon Heartfield — Romantic Three.js Artwork</title>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-    <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galaksi Cinta</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-    <main class="experience" aria-label="Immersive romantic Three.js animation">
-        <canvas id="webgl" aria-hidden="true"></canvas>
 
-        <section class="glass-panel hero-card">
-            <p class="eyebrow">Cyber Love Transmission</p>
-            <h1>Neon Heartfield</h1>
-            <p class="hero-copy">
-                A cinematic constellation of pink and crimson particles, breathing like a digital heart in the dark.
-            </p>
+    <div id="ui-overlay" class="overlay">
+        <div class="card">
+            <h1>loml</h1>
+            <img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExN2FoMGRhdjl0bDl2aGh6b3Ribzh1eGc2ejV2NXh1NzV0YTQzdWtxeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ewginQ7Ny9BXSElV0m/giphy.gif" alt="Cute Bears" class="hero-img"> 
+            <p>CLICK TO START</p>
+            <button id="start-btn">START</button>
+        </div>
+    </div>
 
-            <div class="actions">
-                <button id="igniteBtn" class="neon-button" type="button">
-                    <span>Ignite Heart</span>
-                </button>
-                <button id="morphBtn" class="ghost-button" type="button">
-                    Morph Particles
-                </button>
-            </div>
-        </section>
+    <div id="canvas-container"></div>
 
-        <aside class="glass-panel telemetry" aria-label="Artwork status">
-            <span class="pulse-dot"></span>
-            <div>
-                <strong id="modeLabel">HEART MODE</strong>
-                <small id="particleLabel">initializing particles</small>
-            </div>
-        </aside>
-
-        <div class="interaction-hint">Move your cursor · click to explode · touch to bloom</div>
-        <div class="vignette" aria-hidden="true"></div>
-    </main>
-
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
-        }
-    }
-    </script>
-    <script type="module" src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

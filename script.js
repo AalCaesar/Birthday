@@ -1,419 +1,380 @@
 import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { AfterimagePass } from "three/addons/postprocessing/AfterimagePass.js";
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-const mix = (a, b, t) => a + (b - a) * t;
-const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+const lerp = (a, b, t) => a + (b - a) * t;
 
-class NeonHeartfield {
+class CosmicGalaxyLove {
     constructor() {
-        this.canvas = document.querySelector("#webgl");
-        this.modeLabel = document.querySelector("#modeLabel");
-        this.particleLabel = document.querySelector("#particleLabel");
-        this.igniteBtn = document.querySelector("#igniteBtn");
-        this.morphBtn = document.querySelector("#morphBtn");
-
+        this.canvas = document.querySelector("#galaxyCanvas");
+        this.hero = document.querySelector("#hero");
+        this.openButton = document.querySelector("#openButton");
+        this.messageCard = document.querySelector("#messageCard");
+        this.closeCard = document.querySelector("#closeCard");
         this.clock = new THREE.Clock();
-        this.pointer = new THREE.Vector2(0, 0);
-        this.pointerTarget = new THREE.Vector2(0, 0);
-        this.cameraTarget = new THREE.Vector3();
-        this.cameraLookAt = new THREE.Vector3();
-        this.isSmallScreen = window.matchMedia("(max-width: 720px)").matches;
-        this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        this.particleCount = this.reducedMotion ? 1600 : this.isSmallScreen ? 5200 : 9500;
-        this.modes = ["heart", "galaxy", "rose"];
-        this.modeIndex = 0;
-        this.lastAutoMorph = 0;
-        this.explosionPower = 0;
+        this.pointer = new THREE.Vector2();
+        this.pointerTarget = new THREE.Vector2();
+        this.isMobile = window.matchMedia("(max-width: 720px)").matches;
+        this.particleCount = this.isMobile ? 6500 : 14500;
+        this.isSurpriseOpen = false;
+        this.heartPulse = 0;
 
-        this.initRenderer();
-        this.initScene();
-        this.createTargets();
-        this.createHeartParticles();
-        this.createBackgroundStars();
-        this.createNeonHeartLines();
-        this.createFloatingHearts();
-        this.createCyberGrid();
+        this.setupRenderer();
+        this.setupScene();
+        this.createGalaxyParticles();
+        this.createGlowingHeart();
+        this.createFloatingLights();
+        this.createShootingStars();
         this.bindEvents();
         this.resize();
         this.animate();
     }
 
-    initRenderer() {
+    setupRenderer() {
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             antialias: true,
-            alpha: false,
+            alpha: true,
             powerPreference: "high-performance"
         });
-        this.renderer.setClearColor(0x020005, 1);
+        this.renderer.setClearColor(0x020003, 1);
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.2;
+        this.renderer.toneMappingExposure = 1.18;
 
         this.scene = new THREE.Scene();
-        this.scene.fog = new THREE.FogExp2(0x07000f, 0.055);
+        this.scene.fog = new THREE.FogExp2(0x050004, 0.035);
 
-        this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 80);
-        this.camera.position.set(0, 1.3, 8.2);
+        this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
+        this.camera.position.set(0, 1.2, this.isMobile ? 9.5 : 8.2);
+
+        this.controls = new OrbitControls(this.camera, this.canvas);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.055;
+        this.controls.enablePan = false;
+        this.controls.enableZoom = false;
+        this.controls.autoRotate = true;
+        this.controls.autoRotateSpeed = 0.42;
+        this.controls.target.set(0, 0.6, 0);
 
         this.composer = new EffectComposer(this.renderer);
         this.composer.addPass(new RenderPass(this.scene, this.camera));
-
-        this.bloomPass = new UnrealBloomPass(
+        this.bloom = new UnrealBloomPass(
             new THREE.Vector2(window.innerWidth, window.innerHeight),
-            this.isSmallScreen ? 1.15 : 1.45,
-            0.68,
+            this.isMobile ? 1.25 : 1.55,
+            0.75,
             0.04
         );
-        this.composer.addPass(this.bloomPass);
-
-        this.afterimagePass = new AfterimagePass(this.reducedMotion ? 0.72 : 0.88);
-        this.composer.addPass(this.afterimagePass);
+        this.composer.addPass(this.bloom);
+        this.afterimage = new AfterimagePass(0.86);
+        this.composer.addPass(this.afterimage);
     }
 
-    initScene() {
-        this.scene.add(new THREE.AmbientLight(0xffb7ef, 0.45));
+    setupScene() {
+        this.scene.add(new THREE.AmbientLight(0xffb3bc, 0.55));
 
-        const pinkLight = new THREE.PointLight(0xff2bd6, 12, 12);
-        pinkLight.position.set(-2.8, 2.4, 3.6);
-        this.scene.add(pinkLight);
+        const heartLight = new THREE.PointLight(0xff163d, 20, 18);
+        heartLight.position.set(0, 2.1, 2.8);
+        this.scene.add(heartLight);
 
-        const redLight = new THREE.PointLight(0xff174f, 10, 10);
-        redLight.position.set(2.5, -0.5, 2.2);
-        this.scene.add(redLight);
+        const rimLight = new THREE.PointLight(0xff5c76, 8, 20);
+        rimLight.position.set(-4, -1.5, 3);
+        this.scene.add(rimLight);
 
-        this.mainGroup = new THREE.Group();
-        this.scene.add(this.mainGroup);
+        const blueBackLight = new THREE.PointLight(0x3558ff, 4, 22);
+        blueBackLight.position.set(4, 3, -7);
+        this.scene.add(blueBackLight);
+
+        this.galaxyGroup = new THREE.Group();
+        this.heartGroup = new THREE.Group();
+        this.heartGroup.position.set(0, 1.35, 0.12);
+        this.scene.add(this.galaxyGroup, this.heartGroup);
     }
 
-    createTargets() {
-        this.targets = {
-            heart: this.buildHeartTarget(),
-            galaxy: this.buildGalaxyTarget(),
-            rose: this.buildRoseTarget()
-        };
-        this.activeTarget = this.targets.heart;
-    }
-
-    buildHeartTarget() {
-        const positions = new Float32Array(this.particleCount * 3);
-
-        for (let i = 0; i < this.particleCount; i++) {
-            const t = Math.random() * Math.PI * 2;
-            const fill = Math.pow(Math.random(), 0.44);
-            const jitter = (1 - fill) * 0.22;
-            const x = 16 * Math.pow(Math.sin(t), 3);
-            const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
-            const layer = (Math.random() - 0.5) * (0.8 + (1 - fill) * 1.3);
-            const base = i * 3;
-
-            positions[base] = x * 0.145 * fill + (Math.random() - 0.5) * jitter;
-            positions[base + 1] = y * 0.145 * fill + 0.22 + (Math.random() - 0.5) * jitter;
-            positions[base + 2] = layer;
-        }
-
-        return positions;
-    }
-
-    buildGalaxyTarget() {
-        const positions = new Float32Array(this.particleCount * 3);
-
-        for (let i = 0; i < this.particleCount; i++) {
-            const branch = i % 5;
-            const branchAngle = (branch / 5) * Math.PI * 2;
-            const distance = Math.pow(Math.random(), 0.58) * 3.45;
-            const spin = distance * 1.35;
-            const randomRadius = Math.pow(Math.random(), 2.4) * 0.45;
-            const angle = branchAngle + spin + (Math.random() - 0.5) * 0.46;
-            const base = i * 3;
-
-            positions[base] = Math.cos(angle) * distance + (Math.random() - 0.5) * randomRadius;
-            positions[base + 1] = (Math.random() - 0.5) * 1.15 + Math.sin(distance * 2.1) * 0.22;
-            positions[base + 2] = Math.sin(angle) * distance + (Math.random() - 0.5) * randomRadius;
-        }
-
-        return positions;
-    }
-
-    buildRoseTarget() {
-        const positions = new Float32Array(this.particleCount * 3);
-
-        for (let i = 0; i < this.particleCount; i++) {
-            const t = Math.random() * Math.PI * 2;
-            const petal = Math.sin(5 * t) * 1.25 + 1.65;
-            const radius = petal * Math.pow(Math.random(), 0.48);
-            const height = (Math.random() - 0.5) * 1.35 + Math.sin(t * 3) * 0.28;
-            const twist = height * 0.55;
-            const base = i * 3;
-
-            positions[base] = Math.cos(t + twist) * radius;
-            positions[base + 1] = height;
-            positions[base + 2] = Math.sin(t + twist) * radius;
-        }
-
-        return positions;
-    }
-
-    createHeartParticles() {
-        this.geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(this.particleCount * 3);
-        const colors = new Float32Array(this.particleCount * 3);
-        this.velocities = new Float32Array(this.particleCount * 3);
-
-        const palette = [
-            new THREE.Color(0xff2bd6),
-            new THREE.Color(0xff174f),
-            new THREE.Color(0xff78e4),
-            new THREE.Color(0xff003c),
-            new THREE.Color(0xffffff)
-        ];
-
-        for (let i = 0; i < this.particleCount; i++) {
-            const base = i * 3;
-            const source = this.targets.galaxy;
-            positions[base] = source[base] * 1.8 + (Math.random() - 0.5) * 8;
-            positions[base + 1] = source[base + 1] * 1.8 + (Math.random() - 0.5) * 4;
-            positions[base + 2] = source[base + 2] * 1.8 + (Math.random() - 0.5) * 8;
-
-            const color = palette[Math.floor(Math.random() * palette.length)].clone();
-            color.lerp(new THREE.Color(0xff2bd6), Math.random() * 0.42);
-            colors[base] = color.r;
-            colors[base + 1] = color.g;
-            colors[base + 2] = color.b;
-        }
-
-        this.geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-        this.geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-
-        this.particleMaterial = new THREE.PointsMaterial({
-            size: this.isSmallScreen ? 0.035 : 0.028,
-            map: this.createGlowTexture(),
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.92,
-            depthWrite: false,
-            blending: THREE.AdditiveBlending
-        });
-
-        this.particles = new THREE.Points(this.geometry, this.particleMaterial);
-        this.mainGroup.add(this.particles);
-        this.particleLabel.textContent = `${this.particleCount.toLocaleString()} neon particles`;
-    }
-
-    createGlowTexture() {
+    createGlowTexture(colorA = "rgba(255,255,255,1)", colorB = "rgba(255,22,61,0.58)") {
         const canvas = document.createElement("canvas");
         canvas.width = 128;
         canvas.height = 128;
         const ctx = canvas.getContext("2d");
         const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-        gradient.addColorStop(0, "rgba(255,255,255,1)");
-        gradient.addColorStop(0.18, "rgba(255,120,228,0.95)");
-        gradient.addColorStop(0.42, "rgba(255,43,214,0.48)");
-        gradient.addColorStop(1, "rgba(255,43,214,0)");
+        gradient.addColorStop(0, colorA);
+        gradient.addColorStop(0.22, colorB);
+        gradient.addColorStop(0.48, "rgba(255,22,61,0.24)");
+        gradient.addColorStop(1, "rgba(255,22,61,0)");
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, 128, 128);
-
         const texture = new THREE.CanvasTexture(canvas);
         texture.colorSpace = THREE.SRGBColorSpace;
         return texture;
     }
 
-    createBackgroundStars() {
-        const starCount = this.isSmallScreen ? 900 : 1800;
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(starCount * 3);
-        const colors = new Float32Array(starCount * 3);
+    createGalaxyParticles() {
+        this.positions = new Float32Array(this.particleCount * 3);
+        this.galaxyTargets = new Float32Array(this.particleCount * 3);
+        this.heartTargets = new Float32Array(this.particleCount * 3);
+        this.velocities = new Float32Array(this.particleCount * 3);
+        const colors = new Float32Array(this.particleCount * 3);
 
-        for (let i = 0; i < starCount; i++) {
+        const red = new THREE.Color(0xff163d);
+        const softRed = new THREE.Color(0xff6b7e);
+        const white = new THREE.Color(0xffffff);
+        const blue = new THREE.Color(0x6985ff);
+
+        for (let i = 0; i < this.particleCount; i++) {
             const base = i * 3;
-            positions[base] = (Math.random() - 0.5) * 38;
-            positions[base + 1] = (Math.random() - 0.5) * 24;
-            positions[base + 2] = -Math.random() * 28 - 2;
+            const branch = i % 6;
+            const radius = Math.pow(Math.random(), 0.55) * (this.isMobile ? 4.5 : 5.6);
+            const branchAngle = (branch / 6) * Math.PI * 2;
+            const spinAngle = radius * 1.45;
+            const angle = branchAngle + spinAngle + (Math.random() - 0.5) * 0.5;
+            const randomRadius = Math.pow(Math.random(), 2.4) * 0.65;
 
-            const tint = new THREE.Color().setHSL(0.88 + Math.random() * 0.08, 1, 0.58 + Math.random() * 0.35);
-            colors[base] = tint.r;
-            colors[base + 1] = tint.g;
-            colors[base + 2] = tint.b;
+            const gx = Math.cos(angle) * radius + (Math.random() - 0.5) * randomRadius;
+            const gy = (Math.random() - 0.5) * 1.1 + Math.sin(radius * 2.2) * 0.18;
+            const gz = Math.sin(angle) * radius + (Math.random() - 0.5) * randomRadius;
+
+            this.positions[base] = gx;
+            this.positions[base + 1] = gy;
+            this.positions[base + 2] = gz;
+            this.galaxyTargets[base] = gx;
+            this.galaxyTargets[base + 1] = gy;
+            this.galaxyTargets[base + 2] = gz;
+
+            const t = Math.random() * Math.PI * 2;
+            const fill = Math.pow(Math.random(), 0.44);
+            const hx = 16 * Math.pow(Math.sin(t), 3) * 0.155 * fill;
+            const hy = (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 0.155 * fill + 1.35;
+            const hz = (Math.random() - 0.5) * (0.55 + (1 - fill) * 0.8);
+            this.heartTargets[base] = hx;
+            this.heartTargets[base + 1] = hy;
+            this.heartTargets[base + 2] = hz;
+
+            const color = Math.random() > 0.72 ? white : Math.random() > 0.48 ? softRed : red;
+            color.clone().lerp(blue, Math.random() * 0.18).toArray(colors, base);
         }
 
-        geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.BufferAttribute(this.positions, 3));
         geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 
-        this.stars = new THREE.Points(
-            geometry,
-            new THREE.PointsMaterial({
-                size: 0.018,
-                map: this.createGlowTexture(),
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.68,
-                depthWrite: false,
-                blending: THREE.AdditiveBlending
-            })
-        );
-        this.scene.add(this.stars);
+        this.particleMaterial = new THREE.PointsMaterial({
+            size: this.isMobile ? 0.032 : 0.026,
+            map: this.createGlowTexture(),
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.88,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+        });
+
+        this.galaxyParticles = new THREE.Points(geometry, this.particleMaterial);
+        this.galaxyGroup.add(this.galaxyParticles);
     }
 
-    createNeonHeartLines() {
-        this.heartLines = new THREE.Group();
+    createGlowingHeart() {
         const points = [];
-
-        for (let i = 0; i <= 220; i++) {
-            const t = (i / 220) * Math.PI * 2;
+        for (let i = 0; i <= 260; i++) {
+            const t = (i / 260) * Math.PI * 2;
             points.push(new THREE.Vector3(
-                16 * Math.pow(Math.sin(t), 3) * 0.145,
-                (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 0.145 + 0.22,
-                0.05
+                16 * Math.pow(Math.sin(t), 3) * 0.155,
+                (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 0.155,
+                0
             ));
         }
 
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const materials = [
-            new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.86, blending: THREE.AdditiveBlending }),
-            new THREE.LineBasicMaterial({ color: 0xff2bd6, transparent: true, opacity: 0.72, blending: THREE.AdditiveBlending }),
-            new THREE.LineBasicMaterial({ color: 0xff174f, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending })
+        const layers = [
+            { color: 0xffffff, opacity: 0.82, scale: 0.92 },
+            { color: 0xff163d, opacity: 0.78, scale: 1 },
+            { color: 0xff002b, opacity: 0.42, scale: 1.13 }
         ];
 
-        materials.forEach((material, index) => {
-            const line = new THREE.LineLoop(geometry, material);
-            const scale = 1 + index * 0.052;
-            line.scale.setScalar(scale);
-            line.userData.baseScale = scale;
-            this.heartLines.add(line);
+        layers.forEach((layer) => {
+            const line = new THREE.LineLoop(
+                geometry,
+                new THREE.LineBasicMaterial({
+                    color: layer.color,
+                    transparent: true,
+                    opacity: layer.opacity,
+                    blending: THREE.AdditiveBlending
+                })
+            );
+            line.scale.setScalar(layer.scale);
+            line.userData.baseScale = layer.scale;
+            line.userData.baseOpacity = layer.opacity;
+            this.heartGroup.add(line);
         });
 
-        this.mainGroup.add(this.heartLines);
+        const coreGeometry = new THREE.CircleGeometry(1.15, 96);
+        const coreMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff163d,
+            transparent: true,
+            opacity: 0.08,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+        });
+        const core = new THREE.Mesh(coreGeometry, coreMaterial);
+        core.scale.set(1.1, 0.96, 1);
+        core.userData.baseOpacity = coreMaterial.opacity;
+        this.heartCore = core;
+        this.heartGroup.add(core);
     }
 
-    createFloatingHearts() {
-        this.floaters = new THREE.Group();
-        const geometry = new THREE.ShapeGeometry(this.createHeartShape());
+    createFloatingLights() {
+        const count = this.isMobile ? 45 : 90;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(count * 3);
+        const colors = new Float32Array(count * 3);
 
-        for (let i = 0; i < 34; i++) {
-            const material = new THREE.MeshBasicMaterial({
-                color: i % 3 === 0 ? 0xff174f : 0xff2bd6,
-                transparent: true,
-                opacity: 0.28 + Math.random() * 0.34,
-                side: THREE.DoubleSide,
-                depthWrite: false,
-                blending: THREE.AdditiveBlending
-            });
-            const heart = new THREE.Mesh(geometry, material);
-            heart.position.set((Math.random() - 0.5) * 9, Math.random() * 7 - 2.8, (Math.random() - 0.5) * 8 - 2);
-            heart.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-            heart.scale.setScalar(0.025 + Math.random() * 0.035);
-            heart.userData = {
-                speed: 0.13 + Math.random() * 0.22,
-                drift: Math.random() * Math.PI * 2,
-                spin: (Math.random() - 0.5) * 0.75,
-                baseOpacity: material.opacity
-            };
-            this.floaters.add(heart);
+        for (let i = 0; i < count; i++) {
+            const base = i * 3;
+            positions[base] = (Math.random() - 0.5) * 10;
+            positions[base + 1] = (Math.random() - 0.5) * 6;
+            positions[base + 2] = (Math.random() - 0.5) * 8;
+            new THREE.Color(Math.random() > 0.5 ? 0xff163d : 0xffffff).toArray(colors, base);
         }
 
-        this.scene.add(this.floaters);
+        geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+        this.fireflies = new THREE.Points(
+            geometry,
+            new THREE.PointsMaterial({
+                size: 0.065,
+                map: this.createGlowTexture("rgba(255,255,255,1)", "rgba(255,92,118,0.7)"),
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.7,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
+            })
+        );
+        this.scene.add(this.fireflies);
     }
 
-    createHeartShape() {
-        const shape = new THREE.Shape();
-        shape.moveTo(0, 8);
-        shape.bezierCurveTo(0, 8, -8, 0, -16, 5);
-        shape.bezierCurveTo(-28, 13, -16, 31, 0, 40);
-        shape.bezierCurveTo(16, 31, 28, 13, 16, 5);
-        shape.bezierCurveTo(8, 0, 0, 8, 0, 8);
-        return shape;
+    createShootingStars() {
+        this.shootingStars = [];
+        for (let i = 0; i < 8; i++) {
+            const geometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(-1.35, -0.18, 0)
+            ]);
+            const material = new THREE.LineBasicMaterial({
+                color: i % 2 ? 0xff163d : 0xffffff,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending
+            });
+            const star = new THREE.Line(geometry, material);
+            star.userData = {
+                delay: Math.random() * 6,
+                speed: 2 + Math.random() * 1.8,
+                life: 0
+            };
+            this.resetShootingStar(star, true);
+            this.scene.add(star);
+            this.shootingStars.push(star);
+        }
     }
 
-    createCyberGrid() {
-        const grid = new THREE.GridHelper(28, 42, 0xff2bd6, 0x5f153f);
-        grid.position.y = -2.8;
-        grid.material.transparent = true;
-        grid.material.opacity = 0.22;
-        grid.material.depthWrite = false;
-        this.scene.add(grid);
+    resetShootingStar(star, randomDelay = false) {
+        star.position.set(4 + Math.random() * 5, 1 + Math.random() * 4, -4 - Math.random() * 5);
+        star.rotation.z = -0.2 - Math.random() * 0.22;
+        star.userData.life = randomDelay ? -Math.random() * 6 : 0;
+        star.material.opacity = 0;
     }
 
     bindEvents() {
         window.addEventListener("resize", () => this.resize());
         window.addEventListener("pointermove", (event) => this.onPointerMove(event), { passive: true });
-        window.addEventListener("pointerdown", (event) => {
-            if (event.target.closest("button")) return;
-            this.triggerExplosion(event);
-        });
+        window.addEventListener("click", (event) => this.createClickHeart(event));
 
-        this.igniteBtn.addEventListener("click", (event) => {
+        this.openButton.addEventListener("pointermove", (event) => this.updateButtonGlow(event));
+        this.openButton.addEventListener("click", (event) => this.openSurprise(event));
+        this.closeCard.addEventListener("click", (event) => {
             event.stopPropagation();
-            this.triggerExplosion(event, 1.28);
-        });
-
-        this.morphBtn.addEventListener("click", (event) => {
-            event.stopPropagation();
-            this.nextMode(true);
+            this.messageCard.classList.remove("is-open");
+            this.hero.classList.remove("is-hidden");
+            this.isSurpriseOpen = false;
         });
     }
 
     onPointerMove(event) {
-        const x = (event.clientX / window.innerWidth) * 2 - 1;
-        const y = -(event.clientY / window.innerHeight) * 2 + 1;
-        this.pointerTarget.set(x, y);
+        this.pointerTarget.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.pointerTarget.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }
 
-    triggerExplosion(_event, intensity = 1) {
-        const positions = this.geometry.attributes.position.array;
-        const outward = new THREE.Vector3();
-        const pointerBias = new THREE.Vector3(this.pointer.x * 0.9, this.pointer.y * 0.55, 0.6);
+    updateButtonGlow(event) {
+        const rect = this.openButton.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width) * 100;
+        const y = ((event.clientY - rect.top) / rect.height) * 100;
+        this.openButton.style.setProperty("--x", `${x}%`);
+        this.openButton.style.setProperty("--y", `${y}%`);
+    }
 
-        for (let i = 0; i < this.particleCount; i++) {
-            const base = i * 3;
-            outward.set(positions[base], positions[base + 1], positions[base + 2]).normalize();
-            outward.add(pointerBias).normalize();
+    openSurprise(event) {
+        event.stopPropagation();
+        this.createRipple(event);
+        this.hero.classList.add("is-hidden");
+        window.setTimeout(() => {
+            this.messageCard.classList.add("is-open");
+            this.isSurpriseOpen = true;
+            this.releaseGalaxyBurst(1.25);
+        }, 320);
+    }
 
-            const force = (1.2 + Math.random() * 4.8) * intensity;
-            this.velocities[base] += outward.x * force + (Math.random() - 0.5) * 1.8;
-            this.velocities[base + 1] += outward.y * force + Math.random() * 2.2;
-            this.velocities[base + 2] += outward.z * force + (Math.random() - 0.5) * 2.2;
+    createRipple(event) {
+        const rect = this.openButton.getBoundingClientRect();
+        const ripple = document.createElement("span");
+        ripple.className = "ripple";
+        ripple.style.left = `${event.clientX - rect.left}px`;
+        ripple.style.top = `${event.clientY - rect.top}px`;
+        this.openButton.appendChild(ripple);
+        ripple.addEventListener("animationend", () => ripple.remove());
+    }
+
+    createClickHeart(event) {
+        const amount = event.target.closest("button") ? 4 : 8;
+        for (let i = 0; i < amount; i++) {
+            const heart = document.createElement("span");
+            heart.className = "click-heart";
+            heart.textContent = Math.random() > 0.35 ? "❤" : "♡";
+            heart.style.setProperty("--left", `${event.clientX + (Math.random() - 0.5) * 24}px`);
+            heart.style.setProperty("--top", `${event.clientY + (Math.random() - 0.5) * 24}px`);
+            heart.style.setProperty("--size", `${18 + Math.random() * 18}px`);
+            heart.style.setProperty("--rotate", `${(Math.random() - 0.5) * 46}deg`);
+            heart.style.setProperty("--drift-x", `${(Math.random() - 0.5) * 120}px`);
+            heart.style.setProperty("--drift-y", `${90 + Math.random() * 120}px`);
+            document.body.appendChild(heart);
+            heart.addEventListener("animationend", () => heart.remove());
         }
-
-        this.explosionPower = 1;
-        this.setMode("heart", "EXPLOSION");
     }
 
-    nextMode(manual = false) {
-        this.modeIndex = (this.modeIndex + 1) % this.modes.length;
-        const mode = this.modes[this.modeIndex];
-        this.setMode(mode, manual ? "MORPHING" : undefined);
+    releaseGalaxyBurst(intensity = 1) {
+        for (let i = 0; i < this.particleCount; i += 3) {
+            const base = i * 3;
+            this.velocities[base] += (Math.random() - 0.5) * intensity * 3.6;
+            this.velocities[base + 1] += (Math.random() - 0.5) * intensity * 3.2;
+            this.velocities[base + 2] += (Math.random() - 0.5) * intensity * 3.6;
+        }
     }
 
-    setMode(mode, labelPrefix) {
-        this.activeTarget = this.targets[mode];
-        const label = labelPrefix || `${mode.toUpperCase()} MODE`;
-        this.modeLabel.textContent = label;
-
-        window.clearTimeout(this.modeTimeout);
-        this.modeTimeout = window.setTimeout(() => {
-            this.modeLabel.textContent = `${mode.toUpperCase()} MODE`;
-        }, 1200);
-    }
-
-    updateParticles(delta, elapsed) {
-        const positions = this.geometry.attributes.position.array;
-        const target = this.activeTarget;
-        const pull = this.explosionPower > 0.05 ? 0.018 : 0.034;
-        const waveAmp = this.reducedMotion ? 0.004 : 0.024;
-        const pointerPush = 0.18;
+    updateGalaxy(delta, elapsed) {
+        const positions = this.galaxyParticles.geometry.attributes.position.array;
+        const targetBlend = this.isSurpriseOpen ? 0.62 + Math.sin(elapsed * 1.35) * 0.24 : 0.08 + Math.sin(elapsed * 0.45) * 0.05;
+        const pull = this.isSurpriseOpen ? 0.036 : 0.018;
+        const heartbeat = Math.pow(Math.max(0, Math.sin(elapsed * 3.2)), 9) * targetBlend;
+        this.heartPulse = lerp(this.heartPulse, heartbeat, 0.08);
 
         for (let i = 0; i < this.particleCount; i++) {
             const base = i * 3;
-            const wave = Math.sin(elapsed * 2.25 + i * 0.017) * waveAmp;
-            const depthWave = Math.cos(elapsed * 1.5 + i * 0.013) * waveAmp * 1.7;
-
-            const tx = target[base] + this.pointer.x * pointerPush * Math.sin(i * 12.989);
-            const ty = target[base + 1] + this.pointer.y * pointerPush * Math.cos(i * 7.331) + wave;
-            const tz = target[base + 2] + depthWave;
+            const twinkle = Math.sin(elapsed * 1.8 + i * 0.013) * 0.035;
+            const tx = lerp(this.galaxyTargets[base], this.heartTargets[base], targetBlend) + this.pointer.x * 0.16 * Math.sin(i);
+            const ty = lerp(this.galaxyTargets[base + 1], this.heartTargets[base + 1] * (1 + this.heartPulse * 0.025), targetBlend) + twinkle + this.pointer.y * 0.12 * Math.cos(i);
+            const tz = lerp(this.galaxyTargets[base + 2], this.heartTargets[base + 2], targetBlend) + Math.cos(elapsed + i) * 0.012;
 
             positions[base] += this.velocities[base] * delta;
             positions[base + 1] += this.velocities[base + 1] * delta;
@@ -423,102 +384,106 @@ class NeonHeartfield {
             positions[base + 1] += (ty - positions[base + 1]) * pull;
             positions[base + 2] += (tz - positions[base + 2]) * pull;
 
-            this.velocities[base] *= 0.95;
-            this.velocities[base + 1] *= 0.95;
-            this.velocities[base + 2] *= 0.95;
+            this.velocities[base] *= 0.945;
+            this.velocities[base + 1] *= 0.945;
+            this.velocities[base + 2] *= 0.945;
         }
 
-        this.explosionPower *= 0.965;
-        this.geometry.attributes.position.needsUpdate = true;
-        this.particles.rotation.y = Math.sin(elapsed * 0.23) * 0.12 + this.pointer.x * 0.13;
-        this.particles.rotation.x = Math.sin(elapsed * 0.17) * 0.08 - this.pointer.y * 0.08;
+        this.galaxyParticles.geometry.attributes.position.needsUpdate = true;
+        this.galaxyGroup.rotation.y = elapsed * 0.075;
+        this.galaxyGroup.rotation.x = Math.sin(elapsed * 0.18) * 0.12;
     }
 
-    updateHeartLines(elapsed) {
-        const beat = 1 + Math.sin(elapsed * 3.4) * 0.035 + Math.sin(elapsed * 7.1) * 0.012;
-        this.heartLines.children.forEach((line, index) => {
-            const glow = beat + index * 0.035;
-            line.scale.setScalar(line.userData.baseScale * glow);
-            line.rotation.z = Math.sin(elapsed * 0.9 + index) * 0.018;
-            line.material.opacity = mix(0.35, 0.9, (Math.sin(elapsed * 2.6 + index) + 1) * 0.5) / (index + 1) + 0.18;
+    updateHeart(elapsed) {
+        const pulse = 1 + Math.sin(elapsed * 3.2) * 0.045 + this.heartPulse * 0.18;
+        this.heartGroup.scale.setScalar(pulse);
+        this.heartGroup.rotation.z = Math.sin(elapsed * 0.7) * 0.025;
+        this.heartGroup.rotation.y = Math.sin(elapsed * 0.43) * 0.08 + this.pointer.x * 0.045;
+
+        this.heartGroup.children.forEach((child, index) => {
+            if (!child.material) return;
+            child.material.opacity = (child.userData.baseOpacity || 0.1) + this.heartPulse * (index === 0 ? 0.16 : 0.28);
         });
     }
 
-    updateFloaters(delta, elapsed) {
-        this.floaters.children.forEach((heart, index) => {
-            heart.position.y += heart.userData.speed * delta;
-            heart.position.x += Math.sin(elapsed * 0.55 + heart.userData.drift) * delta * 0.22;
-            heart.rotation.z += heart.userData.spin * delta;
-            heart.rotation.y += (0.2 + index * 0.002) * delta;
-            heart.material.opacity = heart.userData.baseOpacity * (0.72 + Math.sin(elapsed * 1.4 + index) * 0.28);
+    updateFloatingLights(elapsed) {
+        if (!this.fireflies) return;
+        const positions = this.fireflies.geometry.attributes.position.array;
+        for (let i = 0; i < positions.length / 3; i++) {
+            const base = i * 3;
+            positions[base + 1] += Math.sin(elapsed * 0.7 + i) * 0.0009;
+            positions[base] += Math.cos(elapsed * 0.55 + i * 0.7) * 0.0008;
+        }
+        this.fireflies.geometry.attributes.position.needsUpdate = true;
+        this.fireflies.rotation.y = elapsed * -0.035;
+    }
 
-            if (heart.position.y > 4.5) {
-                heart.position.y = -3.4;
-                heart.position.x = (Math.random() - 0.5) * 9;
-                heart.position.z = (Math.random() - 0.5) * 8 - 2;
+    updateShootingStars(delta) {
+        this.shootingStars.forEach((star) => {
+            star.userData.life += delta;
+            if (star.userData.life < star.userData.delay) return;
+
+            star.position.x -= star.userData.speed * delta;
+            star.position.y -= star.userData.speed * delta * 0.28;
+            star.material.opacity = Math.sin(clamp((star.userData.life - star.userData.delay) * 2.1, 0, Math.PI)) * 0.8;
+
+            if (star.position.x < -7 || star.position.y < -4) {
+                this.resetShootingStar(star);
+                star.userData.delay = 1 + Math.random() * 5;
             }
         });
-    }
-
-    updateCamera(elapsed) {
-        const angle = elapsed * 0.13;
-        const radius = this.isSmallScreen ? 8.9 : 7.3;
-        const easedX = easeOutCubic((this.pointer.x + 1) * 0.5) * 2 - 1;
-        const easedY = easeOutCubic((this.pointer.y + 1) * 0.5) * 2 - 1;
-
-        this.cameraTarget.set(
-            Math.sin(angle) * radius + easedX * 0.7,
-            1.1 + easedY * 0.48 + Math.sin(elapsed * 0.27) * 0.14,
-            Math.cos(angle) * radius + 0.8
-        );
-        this.camera.position.lerp(this.cameraTarget, 0.035);
-
-        this.cameraLookAt.set(easedX * 0.22, 0.28 + easedY * 0.12, 0);
-        this.camera.lookAt(this.cameraLookAt);
     }
 
     resize() {
         const width = window.innerWidth;
         const height = window.innerHeight;
-        const pixelRatio = this.reducedMotion ? 1 : clamp(window.devicePixelRatio, 1, this.isSmallScreen ? 1.5 : 2);
-
+        const ratio = clamp(window.devicePixelRatio, 1, this.isMobile ? 1.5 : 2);
         this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
-        this.renderer.setPixelRatio(pixelRatio);
+        this.renderer.setPixelRatio(ratio);
         this.renderer.setSize(width, height, false);
-        this.composer.setPixelRatio(pixelRatio);
+        this.composer.setPixelRatio(ratio);
         this.composer.setSize(width, height);
-        this.bloomPass.setSize(width, height);
+        this.bloom.setSize(width, height);
     }
 
     animate() {
         requestAnimationFrame(() => this.animate());
-
         const delta = Math.min(this.clock.getDelta(), 0.033);
         const elapsed = this.clock.elapsedTime;
 
         this.pointer.lerp(this.pointerTarget, 0.075);
+        this.controls.target.x = this.pointer.x * 0.14;
+        this.controls.target.y = 0.6 + this.pointer.y * 0.08;
+        this.controls.update();
 
-        if (!this.reducedMotion && elapsed - this.lastAutoMorph > 8.5) {
-            this.lastAutoMorph = elapsed;
-            this.nextMode(false);
-        }
+        this.updateGalaxy(delta, elapsed);
+        this.updateHeart(elapsed);
+        this.updateFloatingLights(elapsed);
+        this.updateShootingStars(delta);
 
-        this.updateParticles(delta, elapsed);
-        this.updateHeartLines(elapsed);
-        this.updateFloaters(delta, elapsed);
-        this.updateCamera(elapsed);
-
-        if (this.stars) {
-            this.stars.rotation.y = elapsed * 0.018;
-            this.stars.rotation.x = Math.sin(elapsed * 0.05) * 0.035;
-        }
-
-        this.mainGroup.rotation.z = Math.sin(elapsed * 0.18) * 0.018;
+        this.camera.position.x += (this.pointer.x * 0.42 - this.camera.position.x) * 0.018;
+        this.bloom.strength = (this.isMobile ? 1.18 : 1.45) + this.heartPulse * 0.58;
+        this.bloom.radius = 0.62 + this.heartPulse * 0.12;
         this.composer.render();
     }
 }
 
+function setupLetterReveal() {
+    document.querySelectorAll("[data-letter-reveal]").forEach((element) => {
+        const text = element.textContent;
+        element.textContent = "";
+        [...text].forEach((letter, index) => {
+            const span = document.createElement("span");
+            span.className = "char";
+            span.style.setProperty("--i", index);
+            span.textContent = letter === " " ? " " : letter;
+            element.appendChild(span);
+        });
+    });
+}
+
 window.addEventListener("DOMContentLoaded", () => {
-    new NeonHeartfield();
+    setupLetterReveal();
+    new CosmicGalaxyLove();
 });
