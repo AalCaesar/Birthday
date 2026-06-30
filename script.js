@@ -3,9 +3,9 @@
 // Struktur utama:
 // 1. UI overlay + modal
 // 2. Setup scene Three.js
-// 3. Galaxy particles + black hole
+// 3. Galaxy particles + black hole + light pillar
 // 4. 3D heart particles
-// 5. Orbiting text + orbiting image sprites
+// 5. Orbiting text + floating heart sprites + orbiting image sprites
 // 6. Raycaster, parallax mouse, animation loop
 // =========================================================
 
@@ -61,7 +61,7 @@ container.appendChild(renderer.domElement);
 
 // Cahaya lembut untuk membuat sprite dan torus lebih hidup.
 scene.add(new THREE.AmbientLight(0xffb6cc, 0.45));
-const centerLight = new THREE.PointLight(0xff173d, 8, 120);
+const centerLight = new THREE.PointLight(0xff0033, 10, 120);
 centerLight.position.set(0, 10, 12);
 scene.add(centerLight);
 
@@ -73,9 +73,9 @@ function createGlowTexture() {
     const ctx = canvas.getContext("2d");
     const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
     gradient.addColorStop(0, "rgba(255,255,255,1)");
-    gradient.addColorStop(0.18, "rgba(255,115,155,0.95)");
-    gradient.addColorStop(0.45, "rgba(255,23,61,0.45)");
-    gradient.addColorStop(1, "rgba(255,23,61,0)");
+    gradient.addColorStop(0.16, "rgba(255,51,102,0.98)");
+    gradient.addColorStop(0.44, "rgba(255,0,0,0.42)");
+    gradient.addColorStop(1, "rgba(139,0,0,0)");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     return new THREE.CanvasTexture(canvas);
@@ -84,48 +84,52 @@ function createGlowTexture() {
 const glowTexture = createGlowTexture();
 
 // =========================================================
-// 1. Galaxy Particles — 15.000 partikel spiral merah/pink
+// 1. Galaxy Particles — 20.000 partikel ruby/crimson spiral padat
 // =========================================================
 const galaxyGroup = new THREE.Group();
 const galaxyGeometry = new THREE.BufferGeometry();
-const particleCount = 15000;
+const particleCount = 20000;
 const galaxyPositions = new Float32Array(particleCount * 3);
 const galaxyColors = new Float32Array(particleCount * 3);
 const galaxyVelocities = new Float32Array(particleCount * 3);
 
-const galaxyColorA = new THREE.Color(0xff173d);
-const galaxyColorB = new THREE.Color(0xff6f9d);
-const galaxyColorC = new THREE.Color(0xffffff);
+// Palet spesifik: merah pekat/ruby/crimson tanpa orange/gold.
+const galaxyPalette = [
+    new THREE.Color("#ff0000"),
+    new THREE.Color("#8b0000"),
+    new THREE.Color("#ff3366"),
+    new THREE.Color("#ff0033")
+];
 
 for (let i = 0; i < particleCount; i++) {
     const base = i * 3;
-    const branchCount = 5;
-    const radius = Math.pow(Math.random(), 0.58) * 36;
+    const branchCount = 6;
+    const radius = Math.pow(Math.random(), 0.72) * 27.5; // radius lebih rapat dari versi sebelumnya
     const branchAngle = (i % branchCount) / branchCount * Math.PI * 2;
-    const spinAngle = radius * 0.38;
-    const randomSpread = Math.pow(Math.random(), 2.2) * 4.2;
-    const angle = branchAngle + spinAngle + (Math.random() - 0.5) * 0.35;
+    const spinAngle = radius * 0.62;
+    const compactNoise = Math.pow(Math.random(), 2.8) * 1.75;
+    const angle = branchAngle + spinAngle + (Math.random() - 0.5) * 0.2;
 
-    galaxyPositions[base] = Math.cos(angle) * radius + (Math.random() - 0.5) * randomSpread;
-    galaxyPositions[base + 1] = (Math.random() - 0.5) * 1.7 + Math.sin(radius * 0.55) * 0.22;
-    galaxyPositions[base + 2] = Math.sin(angle) * radius + (Math.random() - 0.5) * randomSpread;
+    galaxyPositions[base] = Math.cos(angle) * radius + (Math.random() - 0.5) * compactNoise;
+    galaxyPositions[base + 1] = (Math.random() - 0.5) * 0.9 + Math.sin(radius * 0.7) * 0.12;
+    galaxyPositions[base + 2] = Math.sin(angle) * radius + (Math.random() - 0.5) * compactNoise;
 
-    const mixed = galaxyColorA.clone().lerp(galaxyColorB, Math.random());
-    if (Math.random() > 0.92) mixed.lerp(galaxyColorC, 0.65);
-    galaxyColors[base] = mixed.r;
-    galaxyColors[base + 1] = mixed.g;
-    galaxyColors[base + 2] = mixed.b;
+    const color = galaxyPalette[Math.floor(Math.random() * galaxyPalette.length)].clone();
+    color.lerp(new THREE.Color("#ff3366"), Math.random() * 0.28);
+    galaxyColors[base] = color.r;
+    galaxyColors[base + 1] = color.g;
+    galaxyColors[base + 2] = color.b;
 }
 
 galaxyGeometry.setAttribute("position", new THREE.BufferAttribute(galaxyPositions, 3));
 galaxyGeometry.setAttribute("color", new THREE.BufferAttribute(galaxyColors, 3));
 
 const galaxyMaterial = new THREE.PointsMaterial({
-    size: 0.16,
+    size: 0.125,
     map: glowTexture,
     vertexColors: true,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0.94,
     depthWrite: false,
     blending: THREE.AdditiveBlending
 });
@@ -135,14 +139,14 @@ galaxyGroup.add(galaxyMesh);
 scene.add(galaxyGroup);
 
 // =========================================================
-// 2. Black Hole — Torus merah transparan di pusat galaksi
+// 2. Black Hole + Pilar Cahaya menuju Heart
 // =========================================================
 const blackHole = new THREE.Mesh(
-    new THREE.TorusGeometry(2.35, 0.38, 24, 120),
+    new THREE.TorusGeometry(2.35, 0.38, 24, 140),
     new THREE.MeshBasicMaterial({
-        color: 0xff173d,
+        color: 0xff0000,
         transparent: true,
-        opacity: 0.62,
+        opacity: 0.68,
         blending: THREE.AdditiveBlending,
         depthWrite: false
     })
@@ -151,53 +155,96 @@ blackHole.rotation.x = Math.PI / 2;
 galaxyGroup.add(blackHole);
 
 const blackHoleCore = new THREE.Mesh(
-    new THREE.SphereGeometry(1.25, 48, 48),
+    new THREE.SphereGeometry(1.18, 48, 48),
     new THREE.MeshBasicMaterial({
-        color: 0x070004,
+        color: 0x050001,
         transparent: true,
-        opacity: 0.9
+        opacity: 0.94
     })
 );
 galaxyGroup.add(blackHoleCore);
 
+// Pilar partikel merah yang menyembur dari pusat galaksi ke heart.
+const heartCenterY = 15.2;
+const pillarParticleCount = 2200;
+const pillarGeometry = new THREE.BufferGeometry();
+const pillarPositions = new Float32Array(pillarParticleCount * 3);
+const pillarColors = new Float32Array(pillarParticleCount * 3);
+const pillarMeta = [];
+
+for (let i = 0; i < pillarParticleCount; i++) {
+    const base = i * 3;
+    const progress = Math.random();
+    const angle = Math.random() * Math.PI * 2;
+    const radius = (1 - progress) * (0.95 + Math.random() * 0.7) + 0.12;
+
+    pillarPositions[base] = Math.cos(angle) * radius;
+    pillarPositions[base + 1] = progress * heartCenterY;
+    pillarPositions[base + 2] = Math.sin(angle) * radius;
+
+    const color = new THREE.Color("#ff0033").lerp(new THREE.Color("#ffeeee"), progress * 0.28);
+    pillarColors[base] = color.r;
+    pillarColors[base + 1] = color.g;
+    pillarColors[base + 2] = color.b;
+    pillarMeta.push({ progress, angle, radius, speed: 0.16 + Math.random() * 0.28 });
+}
+
+pillarGeometry.setAttribute("position", new THREE.BufferAttribute(pillarPositions, 3));
+pillarGeometry.setAttribute("color", new THREE.BufferAttribute(pillarColors, 3));
+
+const pillarMaterial = new THREE.PointsMaterial({
+    size: 0.18,
+    map: glowTexture,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.82,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+});
+
+const pillarMesh = new THREE.Points(pillarGeometry, pillarMaterial);
+scene.add(pillarMesh);
+
 // =========================================================
-// 3. 3D Heart Particles — 3.000 partikel rumus parametrik hati
+// 3. Heart Particles — heart tebal/volume merah menyala #ff0033
 // =========================================================
 const heartGeometry = new THREE.BufferGeometry();
-const heartParticles = 3000;
+const heartParticles = 5200;
 const heartPositions = new Float32Array(heartParticles * 3);
 const heartColors = new Float32Array(heartParticles * 3);
 
 for (let i = 0; i < heartParticles; i++) {
     const base = i * 3;
     const t = Math.PI * 2 * Math.random();
-    const fill = Math.pow(Math.random(), 0.42);
 
-    // Rumus matematis bentuk hati.
+    // Mayoritas partikel dibuat dekat outline agar siluet hati sangat jelas dan padat.
+    const shell = Math.random() > 0.34 ? 0.82 + Math.random() * 0.22 : Math.pow(Math.random(), 0.34) * 0.86;
+    const thickness = (Math.random() - 0.5) * 2.6 * (0.45 + shell * 0.75);
+    const jitter = (Math.random() - 0.5) * 0.12;
+
     const x = 16 * Math.pow(Math.sin(t), 3);
     const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
-    const z = (Math.random() - 0.5) * (2.8 - fill);
 
     const scale = 0.62;
-    heartPositions[base] = x * scale * fill;
-    heartPositions[base + 1] = y * scale * fill + 15.2;
-    heartPositions[base + 2] = z;
+    heartPositions[base] = x * scale * shell + jitter;
+    heartPositions[base + 1] = y * scale * shell + heartCenterY;
+    heartPositions[base + 2] = thickness;
 
-    const c = new THREE.Color(0xff173d).lerp(new THREE.Color(0xff9fbe), Math.random() * 0.55);
-    heartColors[base] = c.r;
-    heartColors[base + 1] = c.g;
-    heartColors[base + 2] = c.b;
+    const color = new THREE.Color("#ff0033").lerp(new THREE.Color("#ff3366"), Math.random() * 0.18);
+    heartColors[base] = color.r;
+    heartColors[base + 1] = color.g;
+    heartColors[base + 2] = color.b;
 }
 
 heartGeometry.setAttribute("position", new THREE.BufferAttribute(heartPositions, 3));
 heartGeometry.setAttribute("color", new THREE.BufferAttribute(heartColors, 3));
 
 const heartMaterial = new THREE.PointsMaterial({
-    size: 0.22,
+    size: 0.2,
     map: glowTexture,
     vertexColors: true,
     transparent: true,
-    opacity: 0.98,
+    opacity: 1,
     depthWrite: false,
     blending: THREE.AdditiveBlending
 });
@@ -205,72 +252,142 @@ const heartMaterial = new THREE.PointsMaterial({
 const heartMesh = new THREE.Points(heartGeometry, heartMaterial);
 scene.add(heartMesh);
 
-// Garis tipis outline hati untuk menambah kesan glow.
+// Outline hati dibuat beberapa lapis agar terlihat tebal seperti neon sign.
+const heartLineGroup = new THREE.Group();
 const heartLinePoints = [];
-for (let i = 0; i <= 220; i++) {
-    const t = i / 220 * Math.PI * 2;
+for (let i = 0; i <= 260; i++) {
+    const t = i / 260 * Math.PI * 2;
     heartLinePoints.push(new THREE.Vector3(
         16 * Math.pow(Math.sin(t), 3) * 0.62,
-        (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 0.62 + 15.2,
+        (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 0.62 + heartCenterY,
         0
     ));
 }
-const heartLine = new THREE.LineLoop(
-    new THREE.BufferGeometry().setFromPoints(heartLinePoints),
-    new THREE.LineBasicMaterial({
-        color: 0xff6f9d,
-        transparent: true,
-        opacity: 0.78,
-        blending: THREE.AdditiveBlending
-    })
-);
-scene.add(heartLine);
+
+[0.98, 1.04, 1.11].forEach((scale, index) => {
+    const heartLine = new THREE.LineLoop(
+        new THREE.BufferGeometry().setFromPoints(heartLinePoints),
+        new THREE.LineBasicMaterial({
+            color: index === 0 ? 0xffeeee : 0xff0033,
+            transparent: true,
+            opacity: index === 0 ? 0.72 : 0.42,
+            blending: THREE.AdditiveBlending
+        })
+    );
+    heartLine.scale.setScalar(scale);
+    heartLine.userData.baseScale = scale;
+    heartLine.userData.baseOpacity = heartLine.material.opacity;
+    heartLineGroup.add(heartLine);
+});
+scene.add(heartLineGroup);
 
 // =========================================================
-// 4. Orbiting Texts — Sprite dari Canvas API
+// 4. Orbiting Texts — Sprite Canvas API putih/pink pudar
 // =========================================================
 const textGroup = new THREE.Group();
-const orbitWords = ["AMOR ETERNO", "INFINITO ∞", "TE AMO", "MY LOVE", "PARA SIEMPRE"];
+const orbitWords = ["AMOR ETERNO", "INFINITO ∞", "TE AMO", "MY LOVE", "AMOR DE MI VIDA"];
 
 function createTextSprite(text) {
     const canvas = document.createElement("canvas");
-    canvas.width = 768;
-    canvas.height = 192;
+    canvas.width = 1024;
+    canvas.height = 256;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.font = "700 48px Inter, sans-serif";
+
+    ctx.font = "800 56px Inter, Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.shadowColor = "#ff174f";
-    ctx.shadowBlur = 28;
-    ctx.fillStyle = "#ff9fbe";
+    ctx.letterSpacing = "2px";
+    ctx.shadowColor = "#ff0033";
+    ctx.shadowBlur = 34;
+    ctx.fillStyle = "#ffeeee";
     ctx.fillText(text, canvas.width / 2, canvas.height / 2);
 
     const texture = new THREE.CanvasTexture(canvas);
     const material = new THREE.SpriteMaterial({
         map: texture,
         transparent: true,
-        opacity: 0.86,
+        opacity: 0.9,
         blending: THREE.AdditiveBlending,
         depthWrite: false
     });
     const sprite = new THREE.Sprite(material);
-    sprite.scale.set(12, 3, 1);
+    sprite.scale.set(13.8, 3.45, 1);
     return sprite;
 }
 
+const textOrbitSettings = [
+    { radius: 18.5, y: 3.4, speed: 0.16 },
+    { radius: 23.5, y: 5.4, speed: 0.13 },
+    { radius: 28, y: 7.1, speed: 0.105 },
+    { radius: 32.5, y: 4.5, speed: 0.09 },
+    { radius: 37, y: 6.6, speed: 0.075 }
+];
+
 orbitWords.forEach((word, index) => {
     const sprite = createTextSprite(word);
+    const setting = textOrbitSettings[index];
     const angle = index / orbitWords.length * Math.PI * 2;
-    const radius = 18 + (index % 2) * 4;
-    sprite.position.set(Math.cos(angle) * radius, 3 + Math.sin(index) * 2, Math.sin(angle) * radius);
-    sprite.userData = { angle, radius, speed: 0.18 + index * 0.015, floatOffset: index * 1.7 };
+    sprite.position.set(Math.cos(angle) * setting.radius, setting.y, Math.sin(angle) * setting.radius);
+    sprite.userData = {
+        angle,
+        radius: setting.radius,
+        baseY: setting.y,
+        speed: setting.speed,
+        floatOffset: index * 1.7
+    };
     textGroup.add(sprite);
 });
 scene.add(textGroup);
 
 // =========================================================
-// 5. Orbiting Images — Sprite interaktif dengan userData
+// 5. Floating Heart Emojis — Sprite kecil di luar orbit teks
+// =========================================================
+const floatingHeartGroup = new THREE.Group();
+
+function createHeartEmojiSprite() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = "118px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "#ff0033";
+    ctx.shadowBlur = 28;
+    ctx.fillText(Math.random() > 0.45 ? "💖" : "❤", 128, 132);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    return new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.82,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+}
+
+for (let i = 0; i < 24; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 39 + Math.random() * 15;
+    const sprite = new THREE.Sprite(createHeartEmojiSprite());
+    sprite.position.set(Math.cos(angle) * radius, 5 + Math.random() * 14, Math.sin(angle) * radius);
+    sprite.scale.setScalar(1.3 + Math.random() * 1.5);
+    sprite.userData = {
+        angle,
+        radius,
+        baseY: sprite.position.y,
+        speed: 0.035 + Math.random() * 0.055,
+        floatOffset: Math.random() * Math.PI * 2,
+        baseScale: sprite.scale.x
+    };
+    floatingHeartGroup.add(sprite);
+}
+scene.add(floatingHeartGroup);
+
+// =========================================================
+// 6. Orbiting Images — Sprite interaktif dengan userData
 // =========================================================
 const interactiveGroup = new THREE.Group();
 const textureLoader = new THREE.TextureLoader();
@@ -313,11 +430,11 @@ function createFallbackTexture(label) {
     canvas.height = 512;
     const ctx = canvas.getContext("2d");
     const gradient = ctx.createLinearGradient(0, 0, 512, 512);
-    gradient.addColorStop(0, "#ff174f");
-    gradient.addColorStop(1, "#21000a");
+    gradient.addColorStop(0, "#ff0033");
+    gradient.addColorStop(1, "#1a0008");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 512, 512);
-    ctx.fillStyle = "rgba(255,255,255,0.88)";
+    ctx.fillStyle = "rgba(255,238,238,0.92)";
     ctx.font = "700 46px Inter";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -350,7 +467,7 @@ memories.forEach((data, index) => {
 scene.add(interactiveGroup);
 
 // =========================================================
-// 6. Raycaster & Interactivity
+// 7. Raycaster & Interactivity
 // =========================================================
 const raycaster = new THREE.Raycaster();
 const mouseVector = new THREE.Vector2();
@@ -395,7 +512,7 @@ function releaseIntroBurst() {
 }
 
 // =========================================================
-// 7. Animation Loop — berjalan penuh setelah START
+// 8. Animation Loop — berjalan penuh setelah START
 // =========================================================
 const clock = new THREE.Clock();
 
@@ -411,7 +528,7 @@ function animate() {
     if (animationStarted) {
         // Rotasi galaksi dan black hole.
         galaxyGroup.rotation.y = elapsed * 0.055;
-        blackHole.rotation.z = elapsed * 0.85;
+        blackHole.rotation.z = elapsed * 0.9;
         blackHoleCore.scale.setScalar(1 + Math.sin(elapsed * 2.2) * 0.08);
 
         // Update posisi partikel galaksi dengan sedikit velocity burst.
@@ -427,21 +544,49 @@ function animate() {
         }
         galaxyGeometry.attributes.position.needsUpdate = true;
 
+        // Pilar cahaya: partikel mengalir ke atas dari black hole menuju heart.
+        const pillarArray = pillarGeometry.attributes.position.array;
+        for (let i = 0; i < pillarParticleCount; i++) {
+            const base = i * 3;
+            const meta = pillarMeta[i];
+            const progress = (meta.progress + elapsed * meta.speed * 0.16) % 1;
+            const radius = (1 - progress) * meta.radius + 0.06 + Math.sin(elapsed * 2.3 + i) * 0.025;
+            const angle = meta.angle + elapsed * 0.36 + progress * 2.1;
+            pillarArray[base] = Math.cos(angle) * radius;
+            pillarArray[base + 1] = progress * heartCenterY;
+            pillarArray[base + 2] = Math.sin(angle) * radius;
+        }
+        pillarGeometry.attributes.position.needsUpdate = true;
+        pillarMaterial.opacity = 0.66 + Math.sin(elapsed * 2.4) * 0.12;
+
         // Hati besar melayang dan berdenyut.
         const heartPulse = 1 + Math.sin(elapsed * 3.1) * 0.035 + Math.pow(Math.max(0, Math.sin(elapsed * 3.1)), 8) * 0.12;
         heartMesh.scale.setScalar(heartPulse);
-        heartLine.scale.setScalar(heartPulse * 1.012);
         heartMesh.rotation.y = elapsed * -0.12;
-        heartLine.rotation.y = elapsed * -0.12;
-        heartLine.material.opacity = 0.58 + Math.sin(elapsed * 3.1) * 0.18;
+        heartMaterial.size = 0.2 + Math.pow(Math.max(0, Math.sin(elapsed * 3.1)), 8) * 0.035;
 
-        // Orbiting text mengelilingi galaksi.
+        heartLineGroup.children.forEach((line, index) => {
+            line.scale.setScalar(line.userData.baseScale * heartPulse);
+            line.rotation.y = elapsed * -0.12;
+            line.material.opacity = line.userData.baseOpacity + Math.sin(elapsed * 3.1 + index) * 0.12;
+        });
+
+        // Orbiting text pada radius berbeda agar tidak bertabrakan.
         textGroup.children.forEach((sprite) => {
             const angle = sprite.userData.angle + elapsed * sprite.userData.speed;
             sprite.position.x = Math.cos(angle) * sprite.userData.radius;
             sprite.position.z = Math.sin(angle) * sprite.userData.radius;
-            sprite.position.y = 3 + Math.sin(elapsed * 0.9 + sprite.userData.floatOffset) * 1.8;
-            sprite.material.opacity = 0.62 + Math.sin(elapsed * 1.4 + sprite.userData.floatOffset) * 0.18;
+            sprite.position.y = sprite.userData.baseY + Math.sin(elapsed * 0.9 + sprite.userData.floatOffset) * 1.2;
+            sprite.material.opacity = 0.72 + Math.sin(elapsed * 1.4 + sprite.userData.floatOffset) * 0.12;
+        });
+
+        // Floating heart emojis di luar orbit teks.
+        floatingHeartGroup.children.forEach((sprite) => {
+            const angle = sprite.userData.angle + elapsed * sprite.userData.speed;
+            sprite.position.x = Math.cos(angle) * sprite.userData.radius;
+            sprite.position.z = Math.sin(angle) * sprite.userData.radius;
+            sprite.position.y = sprite.userData.baseY + Math.sin(elapsed * 0.75 + sprite.userData.floatOffset) * 2.1;
+            sprite.scale.setScalar(sprite.userData.baseScale + Math.sin(elapsed * 1.1 + sprite.userData.floatOffset) * 0.18);
         });
 
         // Orbiting images interaktif.
