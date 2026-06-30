@@ -139,34 +139,52 @@ galaxyGroup.add(galaxyMesh);
 scene.add(galaxyGroup);
 
 // =========================================================
-// 2. Black Hole + Pilar Cahaya menuju Heart
+// 2. Glowing Saturn Rings + Pilar Cahaya menuju Heart
 // =========================================================
-const blackHole = new THREE.Mesh(
-    new THREE.TorusGeometry(2.35, 0.38, 24, 140),
-    new THREE.MeshBasicMaterial({
-        color: 0xff0000,
-        transparent: true,
-        opacity: 0.68,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-    })
-);
+const blackHole = new THREE.Group();
 blackHole.rotation.x = Math.PI / 2;
-galaxyGroup.add(blackHole);
+blackHole.userData.rings = [];
+
+const ringLayers = [
+    { inner: 1.65, outer: 2.15, color: 0xff0033, opacity: 0.55, tilt: 0 },
+    { inner: 2.28, outer: 2.78, color: 0xff1a1a, opacity: 0.42, tilt: 0.04 },
+    { inner: 2.94, outer: 3.34, color: 0xff3366, opacity: 0.3, tilt: -0.035 },
+    { inner: 3.52, outer: 3.72, color: 0xff0033, opacity: 0.22, tilt: 0.065 }
+];
+
+ringLayers.forEach((layer) => {
+    const ring = new THREE.Mesh(
+        new THREE.RingGeometry(layer.inner, layer.outer, 192),
+        new THREE.MeshBasicMaterial({
+            color: layer.color,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: layer.opacity,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        })
+    );
+    ring.rotation.y = layer.tilt;
+    ring.userData.baseOpacity = layer.opacity;
+    blackHole.userData.rings.push(ring);
+    blackHole.add(ring);
+});
 
 const blackHoleCore = new THREE.Mesh(
-    new THREE.SphereGeometry(1.18, 48, 48),
+    new THREE.SphereGeometry(1.05, 48, 48),
     new THREE.MeshBasicMaterial({
-        color: 0x050001,
+        color: 0x080002,
         transparent: true,
-        opacity: 0.94
+        opacity: 0.92,
+        blending: THREE.AdditiveBlending
     })
 );
-galaxyGroup.add(blackHoleCore);
+blackHole.add(blackHoleCore);
+galaxyGroup.add(blackHole);
 
-// Pilar partikel merah yang menyembur dari pusat galaksi ke heart.
+// Pilar partikel merah yang menyembur dari pusat cincin galaksi ke heart.
 const heartCenterY = 15.2;
-const pillarParticleCount = 2200;
+const pillarParticleCount = 3600;
 const pillarGeometry = new THREE.BufferGeometry();
 const pillarPositions = new Float32Array(pillarParticleCount * 3);
 const pillarColors = new Float32Array(pillarParticleCount * 3);
@@ -209,7 +227,7 @@ scene.add(pillarMesh);
 // 3. Heart Particles — heart tebal/volume merah menyala #ff0033
 // =========================================================
 const heartGeometry = new THREE.BufferGeometry();
-const heartParticles = 5200;
+const heartParticles = 18000;
 const heartPositions = new Float32Array(heartParticles * 3);
 const heartColors = new Float32Array(heartParticles * 3);
 
@@ -240,7 +258,7 @@ heartGeometry.setAttribute("position", new THREE.BufferAttribute(heartPositions,
 heartGeometry.setAttribute("color", new THREE.BufferAttribute(heartColors, 3));
 
 const heartMaterial = new THREE.PointsMaterial({
-    size: 0.2,
+    size: 0.16,
     map: glowTexture,
     vertexColors: true,
     transparent: true,
@@ -393,34 +411,77 @@ const interactiveGroup = new THREE.Group();
 const textureLoader = new THREE.TextureLoader();
 textureLoader.setCrossOrigin("anonymous");
 
+function createCuteCharacterImage(icon, label) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 700;
+    canvas.height = 700;
+    const ctx = canvas.getContext("2d");
+    const gradient = ctx.createRadialGradient(350, 260, 40, 350, 350, 430);
+    gradient.addColorStop(0, "#ff6f9d");
+    gradient.addColorStop(0.42, "#ff0033");
+    gradient.addColorStop(1, "#090005");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 700, 700);
+
+    ctx.save();
+    ctx.shadowColor = "#ff0033";
+    ctx.shadowBlur = 44;
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.beginPath();
+    ctx.arc(350, 350, 246, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.font = "210px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "#ffeeee";
+    ctx.shadowBlur = 18;
+    ctx.fillText(icon, 350, 305);
+
+    ctx.font = "800 54px Inter, Arial, sans-serif";
+    ctx.shadowColor = "#ff0033";
+    ctx.shadowBlur = 26;
+    ctx.fillStyle = "#ffeeee";
+    ctx.fillText(label, 350, 520);
+    return canvas.toDataURL("image/png");
+}
+
 const memories = [
     {
-        image: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=700&q=80",
-        title: "AMOR ETERNO",
-        desc: "Di antara jutaan bintang, kamu tetap menjadi cahaya favoritku.",
-        angle: 0,
-        radius: 15
+        image: createCuteCharacterImage("🕷️", "SPIDER LOVE"),
+        title: "SPIDER LOVE",
+        desc: "Kamu adalah pahlawan kecil di semestaku, selalu hadir seperti bintang merah yang paling terang.",
+        angle: Math.PI * 0.08,
+        radius: 21.5
     },
     {
-        image: "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=700&q=80",
-        title: "INFINITO ∞",
-        desc: "Cinta kecil ini berputar seperti galaksi, pelan, indah, dan tidak pernah berhenti.",
-        angle: Math.PI * 0.72,
-        radius: 18
+        image: createCuteCharacterImage("🎀", "KITTY LOVE"),
+        title: "KITTY LOVE",
+        desc: "Manis, lembut, dan selalu membuat galaksi ini terasa lebih hangat.",
+        angle: Math.PI * 0.52,
+        radius: 25.5
     },
     {
-        image: "https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?auto=format&fit=crop&w=700&q=80",
-        title: "MI UNIVERSO",
-        desc: "Jika semesta punya pusat, maka hatiku selalu menemukanmu di sana.",
-        angle: Math.PI * 1.44,
-        radius: 16.5
+        image: createCuteCharacterImage("🐱", "HELLO LOVE"),
+        title: "HELLO LOVE",
+        desc: "Setiap orbit seperti mengulang satu hal yang sama: hatiku selalu menemukanmu.",
+        angle: Math.PI * 1.08,
+        radius: 29.5
     },
     {
-        image: "https://images.unsplash.com/photo-1529254479751-faeedc59e78f?auto=format&fit=crop&w=700&q=80",
-        title: "TE AMO",
-        desc: "Setiap orbit, setiap detik, setiap bintang — semuanya seperti mengucapkan namamu.",
-        angle: Math.PI * 2.15,
-        radius: 19
+        image: createCuteCharacterImage("💖", "MY HEART"),
+        title: "MY HEART",
+        desc: "Di pusat cincin merah ini, ada satu nama yang paling bersinar: kamu.",
+        angle: Math.PI * 1.62,
+        radius: 33.5
+    },
+    {
+        image: createCuteCharacterImage("✨", "STAR LOVE"),
+        title: "STAR LOVE",
+        desc: "Tidak peduli sejauh apa bintang-bintang pergi, hatiku tetap berputar pulang kepadamu.",
+        angle: Math.PI * 2.18,
+        radius: 37.5
     }
 ];
 
@@ -451,9 +512,9 @@ memories.forEach((data, index) => {
         depthWrite: false
     });
     const sprite = new THREE.Sprite(material);
-    sprite.scale.set(5.5, 5.5, 1);
-    sprite.position.set(Math.cos(data.angle) * data.radius, 3.4, Math.sin(data.angle) * data.radius);
-    sprite.userData = { ...data, speed: 0.12 + index * 0.018, floatOffset: index * 2.1 };
+    sprite.scale.set(4.6, 4.6, 1);
+    sprite.position.set(Math.cos(data.angle) * data.radius, 4.15 + index * 0.28, Math.sin(data.angle) * data.radius);
+    sprite.userData = { ...data, baseY: 4.15 + index * 0.28, speed: 0.095 + index * 0.012, floatOffset: index * 2.1 };
 
     // Ganti fallback dengan gambar asli jika berhasil diload.
     textureLoader.load(data.image, (texture) => {
@@ -494,7 +555,7 @@ document.addEventListener("click", (event) => {
     if (intersects.length > 0) {
         const data = intersects[0].object.userData;
         modalImg.src = data.image;
-        modalTitle.textContent = data.title;
+        modalTitle.textContent = "MI UNIVERSO";
         modalDesc.textContent = data.desc;
         modalOverlay.classList.remove("hidden");
         modalOverlay.setAttribute("aria-hidden", "false");
@@ -530,6 +591,10 @@ function animate() {
         galaxyGroup.rotation.y = elapsed * 0.055;
         blackHole.rotation.z = elapsed * 0.9;
         blackHoleCore.scale.setScalar(1 + Math.sin(elapsed * 2.2) * 0.08);
+        blackHole.userData.rings.forEach((ring, index) => {
+            ring.material.opacity = ring.userData.baseOpacity + Math.sin(elapsed * 1.8 + index) * 0.08;
+            ring.scale.setScalar(1 + Math.sin(elapsed * 1.2 + index) * 0.025);
+        });
 
         // Update posisi partikel galaksi dengan sedikit velocity burst.
         const positions = galaxyGeometry.attributes.position.array;
@@ -563,7 +628,7 @@ function animate() {
         const heartPulse = 1 + Math.sin(elapsed * 3.1) * 0.035 + Math.pow(Math.max(0, Math.sin(elapsed * 3.1)), 8) * 0.12;
         heartMesh.scale.setScalar(heartPulse);
         heartMesh.rotation.y = elapsed * -0.12;
-        heartMaterial.size = 0.2 + Math.pow(Math.max(0, Math.sin(elapsed * 3.1)), 8) * 0.035;
+        heartMaterial.size = 0.16 + Math.pow(Math.max(0, Math.sin(elapsed * 3.1)), 8) * 0.03;
 
         heartLineGroup.children.forEach((line, index) => {
             line.scale.setScalar(line.userData.baseScale * heartPulse);
@@ -594,8 +659,8 @@ function animate() {
             const angle = sprite.userData.angle + elapsed * sprite.userData.speed;
             sprite.position.x = Math.cos(angle) * sprite.userData.radius;
             sprite.position.z = Math.sin(angle) * sprite.userData.radius;
-            sprite.position.y = 2.6 + Math.sin(elapsed * 1.05 + sprite.userData.floatOffset) * 1.5;
-            sprite.scale.setScalar(5.2 + Math.sin(elapsed * 1.2 + sprite.userData.floatOffset) * 0.35);
+            sprite.position.y = sprite.userData.baseY + Math.sin(elapsed * 1.05 + sprite.userData.floatOffset) * 0.9;
+            sprite.scale.setScalar(4.6 + Math.sin(elapsed * 1.2 + sprite.userData.floatOffset) * 0.28);
         });
 
         // Kamera parallax mengikuti cursor dengan smooth.
