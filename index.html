@@ -1,24 +1,48 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Birthday</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#020006" />
+    <title>Galaxy Love</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Great+Vibes&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
+    <!-- Canvas utama untuk scene Three.js -->
+    <div id="canvas-container" aria-hidden="true"></div>
 
-    <div id="ui-overlay" class="overlay">
-        <div class="card">
-            <h1>loml</h1>
-            <img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExN2FoMGRhdjl0bDl2aGh6b3Ribzh1eGc2ejV2NXh1NzV0YTQzdWtxeCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ewginQ7Ny9BXSElV0m/giphy.gif" alt="Cute Bears" class="hero-img"> 
-            <p>CLICK TO START</p>
-            <button id="start-btn">START</button>
+    <!-- Intro Overlay: animasi baru dimulai setelah user menekan START -->
+    <section id="ui-overlay" class="overlay intro-overlay">
+        <div class="glass-card intro-card">
+            <p class="eyebrow">Cosmic Galaxy Love</p>
+            <h1>Galaxy Love</h1>
+            <img
+                class="hero-img"
+                src="https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif"
+                alt="Cute love animation"
+            />
+            <p class="intro-text">
+                Masuk ke galaksi kecil yang penuh bintang, cinta, dan kenangan manis.
+            </p>
+            <button id="start-btn" class="start-button" type="button">START</button>
         </div>
-    </div>
+    </section>
 
-    <div id="canvas-container"></div>
+    <!-- Modal Overlay: muncul saat sprite gambar di galaksi diklik -->
+    <section id="modal-overlay" class="modal-overlay hidden" aria-hidden="true">
+        <div class="glass-card modal-card">
+            <img id="modal-img" src="" alt="Memory preview" />
+            <h2 id="modal-title">AMOR</h2>
+            <p id="modal-desc">Deskripsi akan muncul di sini.</p>
+            <button id="close-modal" type="button">CERRAR</button>
+        </div>
+    </section>
+
+    <div class="ui-hint">Klik gambar yang mengorbit untuk membuka pesan ✦</div>
 
     <script src="script.js"></script>
 </body>

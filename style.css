@@ -1,89 +1,325 @@
-body, html {
+:root {
+    --space-black: #020006;
+    --space-red: #170007;
+    --neon-pink: #ff4f8b;
+    --neon-red: #ff173d;
+    --soft-pink: #ff9fbe;
+    --white: #fff7fb;
+    --muted: rgba(255, 229, 239, 0.72);
+    --glass: rgba(22, 3, 12, 0.42);
+    --glass-border: rgba(255, 130, 171, 0.28);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
     margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
     overflow: hidden;
-    background-color: #050510; /* Warna dasar gelap */
-    font-family: 'Courier New', Courier, monospace;
+    background: var(--space-black);
+    color: var(--white);
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+body {
+    background:
+        radial-gradient(circle at 50% 28%, rgba(255, 23, 61, 0.18), transparent 24rem),
+        radial-gradient(circle at 20% 82%, rgba(255, 79, 139, 0.13), transparent 18rem),
+        linear-gradient(180deg, #05000a 0%, #020006 55%, #000 100%);
+}
+
+button {
+    font: inherit;
+}
+
+/* Container canvas Three.js dibuat full screen di belakang UI */
 #canvas-container {
-    position: absolute;
-    top: 0;
-    left: 0;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#canvas-container canvas {
+    display: block;
     width: 100%;
     height: 100%;
+}
+
+/* Lapisan glow dan vignette agar suasana antariksa lebih cinematic */
+body::before,
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+}
+
+body::before {
     z-index: 1;
+    background:
+        radial-gradient(circle at center, transparent 0 44%, rgba(0, 0, 0, 0.78) 100%),
+        linear-gradient(to bottom, rgba(255, 23, 61, 0.07), transparent 36%, rgba(255, 79, 139, 0.06));
 }
 
-/* UI Overlay Styles */
-.overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle at center, #2a1a4a 0%, #050510 100%);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+body::after {
+    z-index: 2;
+    opacity: 0.08;
+    mix-blend-mode: screen;
+    background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.28) 0 1px, transparent 1px 5px);
+}
+
+.overlay,
+.modal-overlay {
+    position: fixed;
+    inset: 0;
     z-index: 10;
-    transition: opacity 1s ease;
+    display: grid;
+    place-items: center;
+    padding: 1.25rem;
+    transition: opacity 700ms var(--ease-out), visibility 700ms, transform 700ms var(--ease-out), filter 700ms var(--ease-out);
 }
 
-.card {
-    background: rgba(20, 20, 40, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    padding: 40px;
+.intro-overlay {
+    background:
+        radial-gradient(circle at 50% 35%, rgba(255, 79, 139, 0.18), transparent 26rem),
+        rgba(0, 0, 0, 0.42);
+}
+
+.overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: scale(1.08);
+    filter: blur(18px);
+}
+
+.modal-overlay {
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.68);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.modal-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: scale(1.02);
+}
+
+/* Glassmorphism utama untuk intro dan modal */
+.glass-card {
+    position: relative;
+    width: min(92vw, 27rem);
+    border: 1px solid var(--glass-border);
+    border-radius: 2rem;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.035)),
+        var(--glass);
+    box-shadow:
+        0 28px 90px rgba(0, 0, 0, 0.55),
+        0 0 52px rgba(255, 23, 61, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(22px) saturate(155%);
+    -webkit-backdrop-filter: blur(22px) saturate(155%);
     text-align: center;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(5px);
-    width: 300px;
+    overflow: hidden;
 }
 
-.card h1 {
-    color: white;
-    font-size: 2em;
-    margin-bottom: 20px;
-    font-weight: normal;
+.glass-card::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    z-index: -1;
+    border-radius: inherit;
+    background: radial-gradient(circle at 50% 0%, rgba(255, 79, 139, 0.32), transparent 48%);
+}
+
+.intro-card {
+    padding: clamp(1.4rem, 4vw, 2.4rem);
+    animation: cardIn 1s var(--ease-out) both;
+}
+
+.eyebrow {
+    margin: 0 0 0.6rem;
+    color: var(--soft-pink);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    text-shadow: 0 0 18px rgba(255, 79, 139, 0.9);
+}
+
+.intro-card h1 {
+    margin: 0;
+    font-family: "Great Vibes", cursive;
+    font-size: clamp(3.6rem, 11vw, 6.4rem);
+    font-weight: 400;
+    line-height: 0.9;
+    color: var(--white);
+    text-shadow:
+        0 0 18px rgba(255, 23, 61, 0.9),
+        0 0 46px rgba(255, 23, 61, 0.58),
+        0 0 90px rgba(255, 79, 139, 0.35);
+    animation: titleFloat 3.4s ease-in-out infinite;
 }
 
 .hero-img {
-    width: 150px;
-    height: auto;
-    margin-bottom: 20px;
+    display: block;
+    width: min(72vw, 12rem);
+    aspect-ratio: 1;
+    object-fit: cover;
+    margin: 1.05rem auto;
+    border-radius: 1.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 0 32px rgba(255, 23, 61, 0.32);
 }
 
-.card p {
-    color: #aaa;
-    font-size: 0.8em;
-    letter-spacing: 2px;
-    margin-bottom: 30px;
+.intro-text {
+    margin: 0 auto 1.25rem;
+    max-width: 21rem;
+    color: var(--muted);
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 1.25rem;
+    line-height: 1.32;
 }
 
-#start-btn {
-    background: linear-gradient(90deg, #8a4baf, #4f3b78);
+.start-button,
+#close-modal {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3.05rem;
+    border: 1px solid rgba(255, 130, 171, 0.62);
+    border-radius: 999px;
     color: white;
-    border: none;
-    padding: 15px 40px;
-    border-radius: 30px;
-    font-size: 1em;
-    font-weight: bold;
-    letter-spacing: 2px;
+    background: rgba(255, 255, 255, 0.055);
+    box-shadow:
+        0 0 20px rgba(255, 23, 61, 0.45),
+        0 0 50px rgba(255, 79, 139, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
     cursor: pointer;
-    box-shadow: 0 5px 15px rgba(138, 75, 175, 0.4);
-    transition: transform 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+    transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out), background 220ms ease;
 }
 
-#start-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 8px 20px rgba(138, 75, 175, 0.6);
+.start-button {
+    padding: 0 2.2rem;
+    font-weight: 900;
+    letter-spacing: 0.18em;
 }
 
-/* Class untuk menyembunyikan overlay */
-.hidden {
-    opacity: 0;
+.start-button:hover,
+#close-modal:hover {
+    transform: translateY(-3px) scale(1.04);
+    background: rgba(255, 23, 61, 0.18);
+    box-shadow:
+        0 0 30px rgba(255, 23, 61, 0.75),
+        0 0 88px rgba(255, 79, 139, 0.32);
+}
+
+.modal-card {
+    width: min(92vw, 28rem);
+    padding: clamp(1.2rem, 4vw, 2rem);
+    animation: modalPop 520ms var(--ease-out) both;
+}
+
+#modal-img {
+    width: 100%;
+    max-height: 18rem;
+    object-fit: cover;
+    border-radius: 1.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 0 32px rgba(255, 79, 139, 0.28);
+}
+
+#modal-title {
+    margin: 1rem 0 0.3rem;
+    color: var(--white);
+    font-family: "Great Vibes", cursive;
+    font-size: clamp(2.5rem, 7vw, 4.2rem);
+    font-weight: 400;
+    text-shadow: 0 0 24px rgba(255, 23, 61, 0.84);
+}
+
+#modal-desc {
+    margin: 0 auto 1.35rem;
+    color: var(--muted);
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 1.2rem;
+    line-height: 1.45;
+}
+
+#close-modal {
+    padding: 0 1.9rem;
+    min-height: 2.8rem;
+    color: var(--soft-pink);
+    font-size: 0.8rem;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+}
+
+.ui-hint {
+    position: fixed;
+    z-index: 6;
+    right: clamp(1rem, 4vw, 2.4rem);
+    bottom: clamp(1rem, 4vw, 2.4rem);
+    color: rgba(255, 229, 239, 0.62);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-shadow: 0 0 16px rgba(255, 23, 61, 0.76);
     pointer-events: none;
+}
+
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(1.5rem) scale(0.96); filter: blur(14px); }
+    to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+@keyframes modalPop {
+    from { opacity: 0; transform: translateY(1.2rem) scale(0.92); filter: blur(16px); }
+    to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+@keyframes titleFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-0.45rem) scale(1.025); }
+}
+
+@media (max-width: 720px) {
+    .glass-card {
+        border-radius: 1.45rem;
+    }
+
+    .intro-card {
+        padding: 1.25rem;
+    }
+
+    .intro-card h1 {
+        font-size: clamp(3.4rem, 18vw, 5.2rem);
+    }
+
+    .intro-text,
+    #modal-desc {
+        font-size: 1.05rem;
+    }
+
+    .hero-img {
+        width: min(60vw, 10rem);
+    }
+
+    .ui-hint {
+        display: none;
+    }
 }
