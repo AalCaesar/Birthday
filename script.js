@@ -96,51 +96,114 @@ function createBrightRingTexture() {
     return new THREE.CanvasTexture(canvas);
 }
 
+// Tekstur "i love you" berulang untuk partikel hati — teks kecil merah/pink
+function createLoveTextTexture() {
+    const size = 256;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    // Latar transparan
+    ctx.clearRect(0, 0, size, size);
+    // Glow merah samar di belakang teks
+    const glow = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    glow.addColorStop(0,   "rgba(255, 80, 120, 0.28)");
+    glow.addColorStop(0.6, "rgba(255, 0,  50,  0.10)");
+    glow.addColorStop(1,   "rgba(0,   0,   0,  0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, size, size);
+    // Teks "i love you" kecil, berulang 3 baris
+    ctx.font = "bold 36px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "#ff2255";
+    ctx.shadowBlur = 10;
+    const lines = ["i love you", "i love you", "i love you"];
+    const lineH = 68;
+    lines.forEach((line, i) => {
+        const yPos = size / 2 + (i - 1) * lineH;
+        // Highlight putih untuk kejelasan
+        ctx.fillStyle = "rgba(255,255,255,0.92)";
+        ctx.fillText(line, size / 2, yPos);
+    });
+    return new THREE.CanvasTexture(canvas);
+}
+
 const glowTexture = createGlowTexture();
 const brightRingTexture = createBrightRingTexture();
+const loveTextTexture = createLoveTextTexture();
 
 // =========================================================
-// 1. BLACK HOLE — Bola hitam + Cincin Akresi Bercahaya
+// 1. BLACK HOLE — Bola hitam pekat + Event Horizon Glow + Cincin Akresi Bersinar
 // =========================================================
 const blackHoleGroup = new THREE.Group();
-// Posisi black hole di tengah galaksi (akan ditambah ke galaxyGroup)
 
-// Inti bola hitam
+// Inti bola hitam pekat — memblokir semua cahaya di belakangnya
 const blackHoleCore = new THREE.Mesh(
     new THREE.SphereGeometry(1.5, 64, 64),
-    new THREE.MeshBasicMaterial({
-        color: 0x000000,
-        transparent: false
-    })
+    new THREE.MeshBasicMaterial({ color: 0x000000 })
 );
 blackHoleGroup.add(blackHoleCore);
 
-// Glow tipis di sekeliling inti bola (halo merah samar)
-const coreHaloMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(1.75, 48, 48),
+// Layer 1 — Event Horizon: halo putih-pink sangat terang persis di tepi bola
+const eventHorizon = new THREE.Mesh(
+    new THREE.SphereGeometry(1.68, 64, 64),
     new THREE.MeshBasicMaterial({
-        color: 0xff0033,
+        color: 0xffeeff,
         transparent: true,
-        opacity: 0.18,
+        opacity: 0.55,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    })
+);
+blackHoleGroup.add(eventHorizon);
+
+// Layer 2 — Glow merah-pink melebar
+const coreHaloMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(2.2, 48, 48),
+    new THREE.MeshBasicMaterial({
+        color: 0xff2266,
+        transparent: true,
+        opacity: 0.22,
         blending: THREE.AdditiveBlending,
         depthWrite: false
     })
 );
 blackHoleGroup.add(coreHaloMesh);
 
-// Cincin akresi: beberapa layer RingGeometry pipih, sangat terang di dalam
-// Cincin dimiringkan agar terlihat miring seperti Saturnus
-blackHoleGroup.rotation.x = Math.PI / 2; // Putar grup agar cincin horizontal (datar)
+// Layer 3 — Halo terluar yang sangat lembut
+const outerGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(3.2, 32, 32),
+    new THREE.MeshBasicMaterial({
+        color: 0xff0033,
+        transparent: true,
+        opacity: 0.07,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    })
+);
+blackHoleGroup.add(outerGlow);
+
+// Cincin akresi datar (mirip planet Saturnus), diputar agar terlihat miring
+// Grup di-tilt X = 90° agar cincin RingGeometry (yang default di XY plane) menjadi horizontal
+blackHoleGroup.rotation.x = Math.PI / 2;
 blackHoleGroup.userData.rings = [];
 
 const accretionRingDefs = [
-    // { inner, outer, colorHex, opacity, tiltY }
-    { inner: 1.9,  outer: 2.6,  color: 0xfffafa, opacity: 0.95, tiltY: 0 },       // Paling dalam — putih menyilaukan
-    { inner: 2.65, outer: 3.2,  color: 0xffccee, opacity: 0.78, tiltY: 0.03 },    // Pink terang
-    { inner: 3.28, outer: 3.85, color: 0xff80b0, opacity: 0.55, tiltY: -0.04 },   // Pink sedang
-    { inner: 3.92, outer: 4.45, color: 0xff2255, opacity: 0.38, tiltY: 0.06 },    // Merah
-    { inner: 4.55, outer: 4.95, color: 0xcc0033, opacity: 0.22, tiltY: -0.05 },   // Merah gelap
-    { inner: 5.08, outer: 5.35, color: 0x880022, opacity: 0.12, tiltY: 0.04 }     // Paling luar — redup
+    // Paling dalam — putih menyilaukan seperti inner edge accretion disk
+    { inner: 1.85, outer: 2.55, color: 0xffffff, opacity: 0.98, tiltY: 0 },
+    // Pink sangat terang
+    { inner: 2.6,  outer: 3.15, color: 0xffccee, opacity: 0.82, tiltY: 0.03 },
+    // Pink-merah
+    { inner: 3.22, outer: 3.80, color: 0xff88bb, opacity: 0.60, tiltY: -0.04 },
+    // Merah cerah
+    { inner: 3.88, outer: 4.42, color: 0xff2255, opacity: 0.42, tiltY: 0.055 },
+    // Merah gelap
+    { inner: 4.50, outer: 4.92, color: 0xcc0033, opacity: 0.26, tiltY: -0.05 },
+    // Luar — hampir hilang
+    { inner: 5.00, outer: 5.40, color: 0x880022, opacity: 0.14, tiltY: 0.04 },
+    // Pita tipis paling luar (seperti F-ring Saturnus)
+    { inner: 5.60, outer: 5.75, color: 0xffaacc, opacity: 0.08, tiltY: -0.02 }
 ];
 
 accretionRingDefs.forEach((def) => {
@@ -351,10 +414,55 @@ const pillarMesh = new THREE.Points(pillarGeometry, pillarMaterial);
 scene.add(pillarMesh);
 
 // =========================================================
-// 5. Heart Particles — Fluffy 3D Heart merah menyala
+// 5. Heart Particles — Tersusun dari teks "i love you" (Text-Based Heart)
 // =========================================================
+
+// --- 5a. Layer TEKS: partikel yang map-nya adalah tekstur "i love you" ---
+// Partikel ini lebih besar dan jarang, memberikan kesan teks terbaca
+const heartTextGeometry = new THREE.BufferGeometry();
+const heartTextCount = 4800; // Lebih sedikit agar teks tidak saling tumpuk
+const heartTextPositions = new Float32Array(heartTextCount * 3);
+
+for (let i = 0; i < heartTextCount; i++) {
+    const base = i * 3;
+    const t = Math.PI * 2 * (i / heartTextCount); // Distribusi merata
+
+    const hx = 16 * Math.pow(Math.sin(t), 3);
+    const hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+    const scale = 0.62;
+
+    // Noise kecil agar tidak persis di garis — sedikit "fluffy"
+    const noiseAmt = 0.55 + Math.random() * 0.45;
+    const nx = (Math.random() - 0.5) * noiseAmt;
+    const ny = (Math.random() - 0.5) * noiseAmt;
+    const nz = (Math.random() - 0.5) * (noiseAmt * 1.4);
+
+    heartTextPositions[base]     = hx * scale + nx;
+    heartTextPositions[base + 1] = hy * scale + heartCenterY + ny;
+    heartTextPositions[base + 2] = nz;
+}
+
+heartTextGeometry.setAttribute("position", new THREE.BufferAttribute(heartTextPositions, 3));
+
+// Material khusus dengan tekstur teks — tidak pakai vertexColors
+// size lebih besar agar teks terbaca
+const heartTextMaterial = new THREE.PointsMaterial({
+    size: 1.8,              // Besar agar teks "i love you" terlihat
+    map: loveTextTexture,
+    transparent: true,
+    opacity: 0.88,
+    depthWrite: false,
+    sizeAttenuation: true,
+    blending: THREE.AdditiveBlending
+});
+
+const heartTextMesh = new THREE.Points(heartTextGeometry, heartTextMaterial);
+scene.add(heartTextMesh);
+
+// --- 5b. Layer GLOW: partikel merah lebih kecil & padat untuk isi/volume ---
+// Lapisan ini memberikan warna merah menyala di balik teks
 const heartGeometry = new THREE.BufferGeometry();
-const heartParticles = 22000;
+const heartParticles = 18000;
 const heartPositions = new Float32Array(heartParticles * 3);
 const heartColors = new Float32Array(heartParticles * 3);
 
@@ -362,36 +470,28 @@ for (let i = 0; i < heartParticles; i++) {
     const base = i * 3;
     const t = Math.PI * 2 * Math.random();
 
-    // Rumus parametrik hati 3D
     const hx = 16 * Math.pow(Math.sin(t), 3);
     const hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+    const scale = 0.62;
 
-    const scale = 0.6;
-
-    // Random offset lebih besar untuk efek "fluffy/cloud-like"
-    // Noise berbeda di setiap sumbu agar tampak 3D
-    const noiseScale = 1.4 + Math.random() * 1.2; // Lebih tebal dari versi lama
+    // Fluffy noise — berbeda dari layer teks agar terlihat volumetrik
+    const noiseScale = 1.1 + Math.random() * 1.3;
     const nx = (Math.random() - 0.5) * noiseScale;
     const ny = (Math.random() - 0.5) * noiseScale;
-    const nz = (Math.random() - 0.5) * (noiseScale * 1.8); // Lebih dalam di sumbu Z
+    const nz = (Math.random() - 0.5) * (noiseScale * 1.9);
 
     heartPositions[base]     = hx * scale + nx;
     heartPositions[base + 1] = hy * scale + heartCenterY + ny;
     heartPositions[base + 2] = nz;
 
-    // Warna: merah menyala utama, sedikit variasi pink/crimson
-    const colorVariant = Math.random();
+    // Palet: merah menyala → pink terang → crimson
+    const cv = Math.random();
     let color;
-    if (colorVariant < 0.55) {
-        color = new THREE.Color("#ff0033");
-    } else if (colorVariant < 0.8) {
-        color = new THREE.Color("#ff3366");
-    } else if (colorVariant < 0.92) {
-        color = new THREE.Color("#cc0022");
-    } else {
-        color = new THREE.Color("#ff80a0"); // Highlight terang
-    }
-    // Variasi kecil
+    if (cv < 0.5)       color = new THREE.Color("#ff0033");
+    else if (cv < 0.75) color = new THREE.Color("#ff3366");
+    else if (cv < 0.9)  color = new THREE.Color("#cc0022");
+    else                color = new THREE.Color("#ff80a0"); // Highlight
+
     color.r = Math.min(1, color.r + (Math.random() - 0.5) * 0.06);
     color.g = Math.max(0, color.g);
 
@@ -404,11 +504,11 @@ heartGeometry.setAttribute("position", new THREE.BufferAttribute(heartPositions,
 heartGeometry.setAttribute("color", new THREE.BufferAttribute(heartColors, 3));
 
 const heartMaterial = new THREE.PointsMaterial({
-    size: 0.18,
+    size: 0.17,
     map: glowTexture,
     vertexColors: true,
     transparent: true,
-    opacity: 1.0,
+    opacity: 0.85,
     depthWrite: false,
     sizeAttenuation: true,
     blending: THREE.AdditiveBlending
@@ -417,23 +517,23 @@ const heartMaterial = new THREE.PointsMaterial({
 const heartMesh = new THREE.Points(heartGeometry, heartMaterial);
 scene.add(heartMesh);
 
-// Outline hati berlapis (neon sign effect)
+// --- 5c. Outline hati berlapis (neon sign effect) ---
 const heartLineGroup = new THREE.Group();
 const heartLinePoints = [];
 for (let i = 0; i <= 300; i++) {
     const t = i / 300 * Math.PI * 2;
     heartLinePoints.push(new THREE.Vector3(
-        16 * Math.pow(Math.sin(t), 3) * 0.6,
-        (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 0.6 + heartCenterY,
+        16 * Math.pow(Math.sin(t), 3) * 0.62,
+        (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 0.62 + heartCenterY,
         0
     ));
 }
 
 [
-    { scale: 0.98, color: 0xffeeee, opacity: 0.7 },
-    { scale: 1.035, color: 0xff3366, opacity: 0.45 },
-    { scale: 1.07,  color: 0xff0033, opacity: 0.28 },
-    { scale: 1.11,  color: 0x880022, opacity: 0.15 }
+    { scale: 0.98,  color: 0xffffff, opacity: 0.65 },
+    { scale: 1.035, color: 0xff66aa, opacity: 0.42 },
+    { scale: 1.07,  color: 0xff0033, opacity: 0.26 },
+    { scale: 1.11,  color: 0x880022, opacity: 0.13 }
 ].forEach((def) => {
     const heartLine = new THREE.LineLoop(
         new THREE.BufferGeometry().setFromPoints(heartLinePoints),
@@ -797,9 +897,18 @@ function animate() {
         // --- Heart berdenyut dan mengapung ---
         const heartBeat = Math.pow(Math.max(0, Math.sin(elapsed * 3.0)), 6) * 0.14;
         const heartPulse = 1 + Math.sin(elapsed * 3.0) * 0.032 + heartBeat;
+
+        // Layer glow (partikel merah kecil)
         heartMesh.scale.setScalar(heartPulse);
         heartMesh.rotation.y = elapsed * -0.11;
-        heartMaterial.size = 0.18 + heartBeat * 0.04;
+        heartMaterial.size = 0.17 + heartBeat * 0.035;
+        heartMaterial.opacity = 0.80 + Math.sin(elapsed * 2.8) * 0.05;
+
+        // Layer teks "i love you" — ikut berdenyut, sedikit lebih lambat agar teks tetap terbaca
+        heartTextMesh.scale.setScalar(heartPulse * 0.995);
+        heartTextMesh.rotation.y = elapsed * -0.11;
+        // Opacity teks sedikit berfluktuasi agar tampak hidup
+        heartTextMaterial.opacity = 0.78 + Math.sin(elapsed * 2.2 + 0.5) * 0.08;
 
         heartLineGroup.children.forEach((line, index) => {
             line.scale.setScalar(line.userData.baseScale * heartPulse);
