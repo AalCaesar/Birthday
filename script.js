@@ -106,10 +106,10 @@ function createLoveTextTexture() {
     // Latar transparan
     ctx.clearRect(0, 0, size, size);
     // Glow merah samar di belakang teks
-    const glow = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
-    glow.addColorStop(0,   "rgba(255, 80, 120, 0.28)");
+    const glow = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    glow.addColorStop(0, "rgba(255, 80, 120, 0.28)");
     glow.addColorStop(0.6, "rgba(255, 0,  50,  0.10)");
-    glow.addColorStop(1,   "rgba(0,   0,   0,  0)");
+    glow.addColorStop(1, "rgba(0,   0,   0,  0)");
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, size, size);
     // Teks "i love you" kecil, berulang 3 baris
@@ -193,7 +193,7 @@ const accretionRingDefs = [
     // Paling dalam — putih menyilaukan seperti inner edge accretion disk
     { inner: 1.85, outer: 2.55, color: 0xffffff, opacity: 0.98, tiltY: 0 },
     // Pink sangat terang
-    { inner: 2.6,  outer: 3.15, color: 0xffccee, opacity: 0.82, tiltY: 0.03 },
+    { inner: 2.6, outer: 3.15, color: 0xffccee, opacity: 0.82, tiltY: 0.03 },
     // Pink-merah
     { inner: 3.22, outer: 3.80, color: 0xff88bb, opacity: 0.60, tiltY: -0.04 },
     // Merah cerah
@@ -229,14 +229,14 @@ accretionRingDefs.forEach((def) => {
 // =========================================================
 const galaxyGroup = new THREE.Group();
 const galaxyGeometry = new THREE.BufferGeometry();
-const particleCount = 30000;
+const particleCount = 50000;
 const galaxyPositions = new Float32Array(particleCount * 3);
 const galaxyColors = new Float32Array(particleCount * 3);
 const galaxyVelocities = new Float32Array(particleCount * 3);
 
 // Palet: merah/crimson/ruby, lebih terang di tengah
 const colorDark = new THREE.Color("#8b0000");
-const colorMid  = new THREE.Color("#cc0022");
+const colorMid = new THREE.Color("#cc0022");
 const colorBright = new THREE.Color("#ff3366");
 const colorWhite = new THREE.Color("#ffddee");
 
@@ -254,7 +254,7 @@ for (let i = 0; i < particleCount; i++) {
     const z = Math.sin(angle) * radius + (Math.random() - 0.5) * compactNoise;
     const y = (Math.random() - 0.5) * 0.85 + Math.sin(radius * 0.65) * 0.1;
 
-    galaxyPositions[base]     = x;
+    galaxyPositions[base] = x;
     galaxyPositions[base + 1] = y;
     galaxyPositions[base + 2] = z;
 
@@ -274,7 +274,7 @@ for (let i = 0; i < particleCount; i++) {
     color.g = Math.max(0, color.g + (Math.random() - 0.5) * 0.04);
     color.b = Math.max(0, color.b + (Math.random() - 0.5) * 0.04);
 
-    galaxyColors[base]     = color.r;
+    galaxyColors[base] = color.r;
     galaxyColors[base + 1] = color.g;
     galaxyColors[base + 2] = color.b;
 }
@@ -319,7 +319,7 @@ for (let i = 0; i < orbitDotCount; i++) {
     const spinAngle = radius * 0.65; // Spiral lebih ketat
     const angle = branchAngle + spinAngle + (Math.random() - 0.5) * 0.15;
 
-    orbitDotPositions[base]     = Math.cos(angle) * radius;
+    orbitDotPositions[base] = Math.cos(angle) * radius;
     orbitDotPositions[base + 1] = (Math.random() - 0.5) * 0.45;
     orbitDotPositions[base + 2] = Math.sin(angle) * radius;
 
@@ -340,7 +340,7 @@ for (let i = 0; i < orbitDotCount; i++) {
         brightness * 0.5,
         brightness * 0.3
     );
-    orbitDotColors[base]     = color.r;
+    orbitDotColors[base] = color.r;
     orbitDotColors[base + 1] = color.g;
     orbitDotColors[base + 2] = color.b;
 }
@@ -380,7 +380,7 @@ for (let i = 0; i < pillarParticleCount; i++) {
     // Lebar aliran: lebih lebar di bawah (dekat black hole), menyempit ke atas
     const spreadRadius = (1 - progress) * (1.1 + Math.random() * 0.7) + 0.06;
 
-    pillarPositions[base]     = Math.cos(angle) * spreadRadius;
+    pillarPositions[base] = Math.cos(angle) * spreadRadius;
     pillarPositions[base + 1] = progress * heartCenterY;
     pillarPositions[base + 2] = Math.sin(angle) * spreadRadius;
 
@@ -392,7 +392,7 @@ for (let i = 0; i < pillarParticleCount; i++) {
     } else {
         color = new THREE.Color("#ff0033").lerp(new THREE.Color("#ff88bb"), (t - 0.15) / 0.85 * 0.5);
     }
-    pillarColors[base]     = color.r;
+    pillarColors[base] = color.r;
     pillarColors[base + 1] = color.g;
     pillarColors[base + 2] = color.b;
 
@@ -445,7 +445,7 @@ for (let i = 0; i < heartTextCount; i++) {
     const ny = (Math.random() - 0.5) * noiseAmt;
     const nz = (Math.random() - 0.5) * (noiseAmt * 1.4);
 
-    heartTextPositions[base]     = hx * scale + nx;
+    heartTextPositions[base] = hx * scale + nx;
     heartTextPositions[base + 1] = hy * scale + heartCenterY + ny;
     heartTextPositions[base + 2] = nz;
 }
@@ -491,23 +491,23 @@ for (let i = 0; i < heartParticles; i++) {
     const ny = (Math.random() - 0.5) * noiseScale;
     const nz = (Math.random() - 0.5) * (noiseScale * 2.2); // Dalam di sumbu Z untuk 3D depth
 
-    heartPositions[base]     = hx * scale + nx;
+    heartPositions[base] = hx * scale + nx;
     heartPositions[base + 1] = hy * scale + heartCenterY + ny;
     heartPositions[base + 2] = nz;
 
     // Palet: merah menyala utama + variasi pink/crimson/highlight
     const cv = Math.random();
     let color;
-    if (cv < 0.45)      color = new THREE.Color("#ff0033");
+    if (cv < 0.45) color = new THREE.Color("#ff0033");
     else if (cv < 0.68) color = new THREE.Color("#ff3366");
     else if (cv < 0.82) color = new THREE.Color("#cc0022");
     else if (cv < 0.93) color = new THREE.Color("#ff6688");
-    else                color = new THREE.Color("#ff99bb"); // Highlight terang
+    else color = new THREE.Color("#ff99bb"); // Highlight terang
 
     color.r = Math.min(1, color.r + (Math.random() - 0.5) * 0.08);
     color.g = Math.max(0, color.g + (Math.random() - 0.5) * 0.02);
 
-    heartColors[base]     = color.r;
+    heartColors[base] = color.r;
     heartColors[base + 1] = color.g;
     heartColors[base + 2] = color.b;
 }
@@ -542,10 +542,10 @@ for (let i = 0; i <= 300; i++) {
 }
 
 [
-    { scale: 0.98,  color: 0xffffff, opacity: 0.65 },
+    { scale: 0.98, color: 0xffffff, opacity: 0.65 },
     { scale: 1.035, color: 0xff66aa, opacity: 0.42 },
-    { scale: 1.07,  color: 0xff0033, opacity: 0.26 },
-    { scale: 1.11,  color: 0x880022, opacity: 0.13 }
+    { scale: 1.07, color: 0xff0033, opacity: 0.26 },
+    { scale: 1.11, color: 0x880022, opacity: 0.13 }
 ].forEach((def) => {
     const heartLine = new THREE.LineLoop(
         new THREE.BufferGeometry().setFromPoints(heartLinePoints),
@@ -557,7 +557,7 @@ for (let i = 0; i <= 300; i++) {
         })
     );
     heartLine.scale.setScalar(def.scale);
-    heartLine.userData.baseScale   = def.scale;
+    heartLine.userData.baseScale = def.scale;
     heartLine.userData.baseOpacity = def.opacity;
     heartLineGroup.add(heartLine);
 });
@@ -596,11 +596,11 @@ function createTextSprite(text) {
 }
 
 const textOrbitSettings = [
-    { radius: 18.5, y: 3.4,  speed: 0.16 },
-    { radius: 23.5, y: 5.4,  speed: 0.13 },
-    { radius: 28,   y: 7.1,  speed: 0.105 },
-    { radius: 32.5, y: 4.5,  speed: 0.09 },
-    { radius: 37,   y: 6.6,  speed: 0.075 }
+    { radius: 18.5, y: 3.4, speed: 0.16 },
+    { radius: 23.5, y: 5.4, speed: 0.13 },
+    { radius: 28, y: 7.1, speed: 0.105 },
+    { radius: 32.5, y: 4.5, speed: 0.09 },
+    { radius: 37, y: 6.6, speed: 0.075 }
 ];
 
 orbitWords.forEach((word, index) => {
@@ -822,7 +822,7 @@ document.addEventListener("click", (event) => {
 function releaseIntroBurst() {
     for (let i = 0; i < particleCount; i += 4) {
         const base = i * 3;
-        galaxyVelocities[base]     += (Math.random() - 0.5) * 2.2;
+        galaxyVelocities[base] += (Math.random() - 0.5) * 2.2;
         galaxyVelocities[base + 1] += (Math.random() - 0.5) * 1.4;
         galaxyVelocities[base + 2] += (Math.random() - 0.5) * 2.2;
     }
@@ -876,10 +876,10 @@ function animate() {
         const positions = galaxyGeometry.attributes.position.array;
         for (let i = 0; i < particleCount; i++) {
             const base = i * 3;
-            positions[base]     += galaxyVelocities[base]     * delta;
+            positions[base] += galaxyVelocities[base] * delta;
             positions[base + 1] += galaxyVelocities[base + 1] * delta;
             positions[base + 2] += galaxyVelocities[base + 2] * delta;
-            galaxyVelocities[base]     *= 0.94;
+            galaxyVelocities[base] *= 0.94;
             galaxyVelocities[base + 1] *= 0.94;
             galaxyVelocities[base + 2] *= 0.94;
         }
@@ -893,7 +893,7 @@ function animate() {
             // Update sudut berdasarkan kecepatan masing-masing
             const currentAngle = meta.branchAngle + meta.spinOffset + elapsed * meta.speed;
             const wobbleR = meta.radius + Math.sin(elapsed * 1.2 + meta.noiseOffset) * 0.3;
-            orbitPositions[base]     = Math.cos(currentAngle) * wobbleR;
+            orbitPositions[base] = Math.cos(currentAngle) * wobbleR;
             orbitPositions[base + 1] = Math.sin(elapsed * 0.8 + meta.noiseOffset) * 0.25;
             orbitPositions[base + 2] = Math.sin(currentAngle) * wobbleR;
         }
@@ -908,7 +908,7 @@ function animate() {
             const progress = (meta.progress + elapsed * meta.speed * 0.14) % 1.0;
             const spreadRadius = (1 - progress) * meta.radius + 0.05 + Math.sin(elapsed * 2.1 + i * 0.7) * 0.02;
             const angle = meta.angle + elapsed * 0.38 + progress * 2.3;
-            pillarArray[base]     = Math.cos(angle) * spreadRadius;
+            pillarArray[base] = Math.cos(angle) * spreadRadius;
             pillarArray[base + 1] = progress * heartCenterY;
             pillarArray[base + 2] = Math.sin(angle) * spreadRadius;
         }
